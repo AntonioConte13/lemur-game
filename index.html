@@ -367,6 +367,39 @@ SPR.empy = S([
 "..333333333333..",
 "...33......33...",
 "................"]);
+SPR.hamster = [S([
+"................",
+"...33..33.......",
+"...33333333.....",
+"..3111111113....",
+".31131131113....",
+".31111111113....",
+".31311111313....",
+".31111331113....",
+".31111111113....",
+"..3111111113....",
+"..3111111113....",
+"...33333333.....",
+"....33..33......",
+"....33..33......",
+"................",
+"................"]), S([
+"................",
+"...33..33.......",
+"...33333333.....",
+"..3111111113....",
+".31131131113....",
+".31111111113....",
+".31311111313....",
+".31111331113....",
+".31111111113....",
+"..3111111113....",
+"..3111111113....",
+"...33333333.....",
+"...33.....33....",
+"...33.....33....",
+"................",
+"................"])];
 SPR.wizard = S([
 ".......33.......",
 "......3113......",
@@ -638,11 +671,43 @@ function buildL3() { // FROWNING FOREST - vine swinging, 220x24 tiles
   for (let r = 0; r < 24; r++) rows.push(CH.map(c => c[r]).join(''));
   return rows;
 }
+function buildL4() { // CANOPY RUSH - rival race, 176x32 tiles
+  const gr = grid(176, 32);
+  rect(gr, 0, 28, 31, 4, '#');     // start straight
+  rect(gr, 35, 28, 15, 4, '#');    // after teaching gap
+  rect(gr, 50, 12, 21, 20, '#');   // mesa
+  rect(gr, 48, 10, 2, 18, 'T');    // trunk up the mesa face
+  rect(gr, 71, 28, 7, 4, '#');     // pit ledge
+  rect(gr, 101, 28, 75, 4, '#');   // long back half floor
+  rect(gr, 116, 16, 2, 12, 'T');   // tower trunk
+  rect(gr, 118, 18, 14, 2, '#');   // high ledge
+  rect(gr, 141, 18, 12, 2, '#');   // landing ledge
+  set(gr, 3, 27, 'S'); set(gr, 5, 27, 'h');
+  set(gr, 18, 27, 'e'); set(gr, 26, 27, 'e'); set(gr, 40, 27, 'p');
+  set(gr, 60, 11, 'e');            // mesa-top beetle
+  set(gr, 108, 27, 'p'); set(gr, 162, 27, 'e');
+  set(gr, 82, 18, 'v'); set(gr, 89, 18, 'v'); set(gr, 96, 18, 'v');
+  set(gr, 136, 10, 'v');
+  set(gr, 48, 8, 'r'); set(gr, 92, 23, 'r'); set(gr, 150, 16, 'r');
+  set(gr, 168, 27, 'E');
+  return gr.map(r => r.join(''));
+}
 const PAL_FOREST = ['#c4bda8', '#7d756a', '#49443d', '#171713'];
+const L4_PATH = [
+  [40,208],[240,208],[248,206],[276,188],[304,206],[308,208],
+  [380,208],[388,180],[388,80],[400,80],[560,80],
+  [576,120],[588,208],[616,208],
+  [644,194],[660,188],[688,178],[716,188],[744,178],[772,188],[800,196],[812,208],
+  [920,208],[928,180],[928,128],[940,128],[1048,128],
+  [1072,120],[1096,110],[1122,122],[1130,128],[1216,128],
+  [1226,168],[1234,208],[1344,208],
+];
 const LEVELS = [
   { name: 'JUNGLE CANOPY',    build: buildL1, npc: { n: 'panda',  c: 'bison' } },
   { name: 'THE GREAT TRUNKS', build: buildL2, npc: { n: 'empy',   c: 'bison' } },
   { name: 'FROWNING FOREST',  build: buildL3, npc: { n: 'wizard', c: 'bison' }, pal: PAL_FOREST },
+  { name: 'CANOPY RUSH',      build: buildL4, npc: {}, bias: 72, race: L4_PATH, raceSpeed: 1.32,
+    quip: ['HUSTLING HAMSTER:', 'I KEEP WINNING BECAUSE', 'I KEEP MOVING! GO!'] },
 ];
 let MAP, MAPW, MAPH = 24, markers, curLevel = 0;
 function loadLevel(i) {
@@ -669,10 +734,10 @@ function tileAt(cx, cy) {
 }
 
 // ---------- Entities ----------
-let player, beetles, plants, relics, npcs, platforms, peckers, vines, signs, gate, checkpoint, spawnPt;
+let player, beetles, plants, relics, npcs, platforms, peckers, vines, signs, gate, checkpoint, spawnPt, racer;
 loadLevel(0);
 function resetLevel(fromCheckpoint) {
-  beetles = []; plants = []; relics = []; npcs = []; platforms = []; peckers = []; vines = []; signs = []; gate = null;
+  beetles = []; plants = []; relics = []; npcs = []; platforms = []; peckers = []; vines = []; signs = []; gate = null; racer = null;
   const nmap = LEVELS[curLevel].npc;
   const shardMarks = markers.filter(m => m.ch === 'r').sort((a, b) => a.c - b.c);
   for (const m of markers) {
@@ -685,6 +750,7 @@ function resetLevel(fromCheckpoint) {
     else if (m.ch === 'n') npcs.push({ kind: nmap.n, x: x - 4, y: y - 8 });
     else if (m.ch === 'E') gate = { x, y: y + 8 };
     else if (m.ch === 'v') vines.push({ x: x + 4, y: y + 2, len: 40, th: 0.12, om: 0 });
+    else if (m.ch === 'h') racer = { x, y: y - 8, seg: 0, d: 0, t: 0, done: false, anim: 0, face: 1 };
     else if (m.ch === 's') signs.push({ x: x - 4, y: y - 8 });
     else if (m.ch === 'k') npcs.push({ kind: 'cat', x: x - 4, y: y - 8 });
     else if (m.ch === 'w') {
@@ -983,11 +1049,37 @@ function updateEnemies() {
   }
 }
 
+function updateRacer() {
+  if (!racer || racer.done) return;
+  racer.t++;
+  if (racer.t < 30) return; // brief head start for the player
+  const path = LEVELS[curLevel].race;
+  let remaining = LEVELS[curLevel].raceSpeed;
+  while (remaining > 0 && racer.seg < path.length - 1) {
+    const a = path[racer.seg], b = path[racer.seg + 1];
+    const segLen = Math.hypot(b[0] - a[0], b[1] - a[1]) || 0.001;
+    const left = segLen - racer.d;
+    if (remaining < left) { racer.d += remaining; remaining = 0; }
+    else { remaining -= left; racer.seg++; racer.d = 0; }
+  }
+  const a = path[racer.seg], b = path[Math.min(racer.seg + 1, path.length - 1)];
+  const segLen = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+  const t = Math.min(1, racer.d / segLen);
+  const nx = a[0] + (b[0] - a[0]) * t, ny = a[1] + (b[1] - a[1]) * t;
+  if (Math.abs(nx - racer.x) > 0.05) racer.face = nx > racer.x ? 1 : -1;
+  racer.x = nx; racer.y = ny; racer.anim++;
+  if (racer.seg >= path.length - 1) {
+    racer.done = true;
+    if (state === 'play') { state = 'lost'; stateT = 0; }
+  }
+}
+
 // ---------- Camera ----------
 let camX = 0, camY = 0, camYT = 0;
 function updateCamera() {
   const p = player;
-  const bias = p.face > 0 ? 60 : 84;
+  const fw = LEVELS[curLevel].bias || 60;
+  const bias = p.face > 0 ? fw : (144 - fw);
   const tx = Math.max(0, Math.min(p.x - bias, LEVEL_W() - W));
   camX += (tx - camX) * 0.12;
   if (Math.abs(tx - camX) < 0.3) camX = tx;
@@ -1059,6 +1151,19 @@ function drawEntities() {
   const NSPR = { bison: SPR.bison, panda: SPR.panda, empy: SPR.empy, wizard: SPR.wizard, cat: SPR.cat };
   for (const n of npcs) drawSpr(NSPR[n.kind], n.x + ox, n.y + oy, n.kind !== 'bison');
   for (const wp of peckers) drawSpr(SPR.pecker[(wp.t >> 4) & 1], wp.x + ox, wp.y + oy, wp.t % 128 > 64);
+  if (racer) {
+    const sx = Math.round(racer.x) + ox, sy = Math.round(racer.y) + oy;
+    if (sx > -16 && sx < W && sy > -16 && sy < H) {
+      drawSpr(SPR.hamster[(racer.anim >> 3) & 1], sx, sy, racer.face < 0);
+    } else { // off-screen: edge marker
+      const ax = Math.max(3, Math.min(W - 11, sx + 4));
+      const ay = Math.max(11, Math.min(H - 18, sy + 4));
+      fbRect(ax - 2, ay - 2, 9, 9, 0);
+      fbRect(ax - 2, ay - 2, 9, 1, 3); fbRect(ax - 2, ay + 6, 9, 1, 3);
+      fbRect(ax - 2, ay - 2, 1, 9, 3); fbRect(ax + 6, ay - 2, 1, 9, 3);
+      drawText('H', ax + 1, ay, 3);
+    }
+  }
   for (const pl of plants) {
     const open = pl.t >= 80;
     const jit = (!open && pl.t > 68) ? ((pl.t >> 1) & 1) : 0;
@@ -1217,18 +1322,32 @@ function step() {
     renderWorld();
     fbRect(20, 60, 120, 20, 0); fbRect(20, 60, 120, 1, 3); fbRect(20, 79, 120, 1, 3);
     drawTextC('LEVEL ' + (curLevel + 1), 63, 3); drawTextC(LEVELS[curLevel].name, 71, 3);
+    if (LEVELS[curLevel].quip) drawTextbox(LEVELS[curLevel].quip);
     if (stateT > 100 || startPressed || aPressed) state = 'play';
   }
   else if (state === 'play') {
     if (startPressed) { state = 'pause'; }
     else {
       updateEnemies();
+      updateRacer();
       updatePlayer();
       updateCamera();
     }
     renderWorld();
     drawNpcQuips();
     if (toastT > 0) drawTextC(toast, 34, 3);
+  }
+  else if (state === 'lost') {
+    stateT++;
+    renderWorld();
+    fbRect(12, 48, 136, 44, 0);
+    fbRect(12, 48, 136, 2, 3); fbRect(12, 90, 136, 2, 3); fbRect(12, 48, 2, 44, 3); fbRect(146, 48, 2, 44, 3);
+    drawTextC('HAMSTER WINS!', 54, 3, 2);
+    drawTextC('"KEEP MOVING, LEMUR!"', 70, 2);
+    drawTextC('PRESS START - REMATCH', 80, 3);
+    if (stateT > 60 && (aPressed || startPressed) && fadeDir === 0) {
+      startFade(() => { resetLevel(false); state = 'intro'; stateT = 0; });
+    }
   }
   else if (state === 'pause') {
     renderWorld();
