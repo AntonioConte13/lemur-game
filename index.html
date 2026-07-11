@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Legendary Lemur: Tree Top Tactics</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent;
+      -webkit-touch-callout:none; user-select:none; -webkit-user-select:none; }
+  html,body { height:100%; }
+  body { background:radial-gradient(circle at 50% 30%, #2c2c28, #151513);
+         display:flex; align-items:center; justify-content:center;
+         font-family:monospace; overflow:hidden; }
+  .shell { width:min(100vw, 430px); max-height:100vh; overflow:hidden;
+           background:linear-gradient(160deg,#dcc266 0%,#c9ac4b 55%,#b3963c 100%);
+           border-radius:14px 14px 52px 14px; padding:12px 14px 16px;
+           box-shadow:0 10px 30px rgba(0,0,0,.6), inset 0 2px 2px rgba(255,255,255,.35), inset 0 -3px 6px rgba(0,0,0,.25); }
+  .toprow { display:flex; justify-content:space-between; align-items:center; padding:0 4px 6px; }
+  .brand  { font-size:10px; font-weight:bold; color:#6d5c1e; letter-spacing:1px; font-style:italic; }
+  .led    { display:flex; align-items:center; gap:4px; font-size:7px; color:#6d5c1e; }
+  .led i  { width:7px; height:7px; border-radius:50%; background:#d23b2f; box-shadow:0 0 6px #d23b2f; }
+  .bezel { background:#33332e; border-radius:10px 10px 34px 10px; padding:12px 10px 14px;
+           box-shadow: inset 0 2px 6px rgba(0,0,0,.7); }
+  .bezel .label { text-align:center; font-size:8px; color:#a99e79; letter-spacing:2px; padding-bottom:8px; }
+  canvas { display:block; margin:0 auto; background:#e0dbcd;
+           image-rendering:pixelated; image-rendering:crisp-edges; }
+  .controls { display:flex; justify-content:space-between; align-items:center; padding:16px 6px 0; }
+  .dpad { display:grid; grid-template-columns:repeat(3,38px); grid-template-rows:repeat(3,38px); touch-action:none; }
+  .dpad div { background:#3c3c37; }
+  .dpad .c { border-radius:0; position:relative; }
+  .dpad .c::after { content:''; position:absolute; inset:8px; border-radius:50%; background:#333330; }
+  .dpad .u { grid-column:2; grid-row:1; border-radius:8px 8px 0 0; }
+  .dpad .l { grid-column:1; grid-row:2; border-radius:8px 0 0 8px; }
+  .dpad .cc{ grid-column:2; grid-row:2; }
+  .dpad .r { grid-column:3; grid-row:2; border-radius:0 8px 8px 0; }
+  .dpad .d { grid-column:2; grid-row:3; border-radius:0 0 8px 8px; }
+  .dpad div:not(.cc){ box-shadow:0 3px 4px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.15); }
+  .btns { display:flex; gap:18px; transform:rotate(-22deg); touch-action:none; }
+  .btn  { width:54px; height:54px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #7c3550, #571f36);
+          color:#e8d9a8; display:flex; align-items:center; justify-content:center;
+          font-weight:bold; font-size:16px; box-shadow:0 4px 6px rgba(0,0,0,.5), inset 0 2px 2px rgba(255,255,255,.2); }
+  .btn:active, .pressed { filter:brightness(1.35); }
+  .startrow { display:flex; justify-content:center; padding-top:14px; }
+  .start { width:56px; height:14px; border-radius:8px; background:#3c3c37; transform:rotate(-22deg);
+           box-shadow:0 2px 3px rgba(0,0,0,.5); color:#a99e79; font-size:7px; text-align:center; line-height:15px;
+           letter-spacing:1px; touch-action:none; }
+  .hint { text-align:center; font-size:9px; color:#7a6a2c; padding-top:8px; letter-spacing:1px; }
+  @media (min-width:700px){ .shell{ transform:scale(1.05); } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="toprow">
+    <div class="led"><i></i>BATTERY</div>
+    <div class="brand">LEMUR BOY <span style="font-weight:normal">pocket</span></div>
+  </div>
+  <div class="bezel">
+    <div class="label">VeeFriends&trade; &mdash; LEGENDARY LEMUR</div>
+    <canvas id="screen" width="160" height="144"></canvas>
+  </div>
+  <div class="controls">
+    <div class="dpad" id="dpad">
+      <div class="u"></div><div class="l"></div><div class="cc c"></div><div class="r"></div><div class="d"></div>
+    </div>
+    <div class="btns">
+      <div class="btn" id="btnB">B</div>
+      <div class="btn" id="btnA">A</div>
+    </div>
+  </div>
+  <div class="startrow"><div class="start" id="btnStart">START</div></div>
+  <div class="hint">ARROWS MOVE &middot; Z JUMP &middot; X RUN &middot; ENTER START</div>
+</div>
+<script>
+'use strict';
+/* ================================================================
+   LEGENDARY LEMUR: TREE TOP TACTICS — GB Pocket style platformer
+   Personal VeeFriends fan project. 160x144, 4 colors, 60fps.
+   ================================================================ */
+
+// ---------- TUNING (all physics constants; px per frame @60fps) ----------
+const TUNING = {
+  walk: 1.0, run: 1.75,
+  acc: 0.0625, dec: 0.0625, skid: 0.125,
+  jumpV0: 3.6,            // base jump impulse (upward)
+  jumpV0Up: 0.4,          // legend lv1 bonus
+  gravUp: 0.12,           // rising, A held
+  gravDown: 0.25,         // falling / released
+  apexBand: 0.5, apexMul: 0.5,
+  minJump: 1.0,           // release clamp
+  term: 3.5,
+  coyote: 6, buffer: 8,
+  stomp: 2.2, stompHold: 3.4,
+  invuln: 90,
+};
+
+// ---------- Palette ----------
+const PAL_HEX = ['#e0dbcd', '#a89f94', '#706b66', '#2b2b26']; // GB Pocket olive
+const W = 160, H = 144, TS = 8, ROWS = 24;
+const cv = document.getElementById('screen'), ctx = cv.getContext('2d');
+const img = ctx.createImageData(W, H);
+const px32 = new Uint32Array(img.data.buffer);
+const FB = new Uint8Array(W * H);
+const PAL32 = PAL_HEX.map(h => {
+  const n = parseInt(h.slice(1), 16);
+  return (0xff000000 | ((n & 0xff) << 16) | (n & 0xff00) | (n >> 16)) >>> 0;
+});
+let fade = 0;        // 0..4 : shift all indices toward lightest (4 = blank)
+let flashInv = 0;    // frames of inverted palette (damage flash)
+
+function blit() {
+  for (let i = 0; i < FB.length; i++) {
+    let v = FB[i];
+    if (flashInv > 0) v = 3 - v;
+    v = Math.max(0, v - fade);
+    px32[i] = PAL32[v];
+  }
+  ctx.putImageData(img, 0, 0);
+}
+function clearFB(c) { FB.fill(c); }
+function fbRect(x, y, w, h, c) {
+  const x0 = Math.max(0, x | 0), y0 = Math.max(0, y | 0);
+  const x1 = Math.min(W, (x + w) | 0), y1 = Math.min(H, (y + h) | 0);
+  for (let yy = y0; yy < y1; yy++) FB.fill(c, yy * W + x0, yy * W + x1);
+}
+
+// ---------- Sprites (pixel strings: '.'=transparent, 0-3 palette idx) ----------
+function S(rows) {
+  const w = rows[0].length, h = rows.length;
+  const d = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    if (rows[y].length !== w) console.error('sprite row len', y, rows);
+    for (let x = 0; x < w; x++) { const c = rows[y][x]; d[y * w + x] = c === '.' ? 255 : +c; }
+  }
+  return { w, h, d };
+}
+function drawSpr(s, x, y, flip, scale) {
+  scale = scale || 1;
+  x |= 0; y |= 0;
+  for (let sy = 0; sy < s.h; sy++) for (let sx = 0; sx < s.w; sx++) {
+    const c = s.d[sy * s.w + (flip ? s.w - 1 - sx : sx)];
+    if (c === 255) continue;
+    for (let dy = 0; dy < scale; dy++) for (let dx = 0; dx < scale; dx++) {
+      const px = x + sx * scale + dx, py = y + sy * scale + dy;
+      if (px >= 0 && px < W && py >= 0 && py < H) FB[py * W + px] = c;
+    }
+  }
+}
+
+const SPR = {};
+SPR.lemurIdle = S([
+"................",
+"................",
+".......33....33.",
+"..33...31111113.",
+"..11...31300313.",
+"..33...31300313.",
+"..11...31000013.",
+"..33...31000333.",
+"..11....310003..",
+"..33311111113...",
+"....311000113...",
+"....311000113...",
+"....311000113...",
+"....311111113...",
+".....33...33....",
+".....33...33...."]);
+SPR.lemurWalk = S([
+"................",
+"................",
+".......33....33.",
+"..33...31111113.",
+"..11...31300313.",
+"..33...31300313.",
+"..11...31000013.",
+"..33...31000333.",
+"..11....310003..",
+"..33311111113...",
+"....311000113...",
+"....311000113...",
+"....311000113...",
+"....311111113...",
+"....33.....33...",
+"...33.......33.."]);
+SPR.lemurJump = S([
+"................",
+"................",
+".......33....33.",
+"..13...31111113.",
+"..31...31300313.",
+"..13...31300313.",
+"..31...31000013.",
+"..13...31000333.",
+"..31....310003..",
+"..33311111113...",
+"....311000113...",
+"....311000113...",
+"....311000113...",
+"....311111113...",
+".....3333.......",
+"................"]);
+SPR.beetle = [S([
+"..3333..",
+".322223.",
+"33222233",
+".333333.",
+"3..33..3"]), S([
+"..3333..",
+".322223.",
+"33222233",
+".333333.",
+".3.33.3."])];
+SPR.plantClosed = S([
+"................",
+"......333.......",
+".....31113......",
+".....31113......",
+"......333.......",
+".......22.......",
+".......22.......",
+".......22.......",
+".......22.......",
+".......22.......",
+".......22.......",
+".......22.......",
+"...311.22.113...",
+"....33.22.33....",
+".......22.......",
+".......22......."]);
+SPR.plantOpen = S([
+".....33333......",
+"....3111113.....",
+"....3010103.....",
+"....3101013.....",
+"....3111113.....",
+".....33333......",
+".......22.......",
+".......22.......",
+".......22.......",
+".......22.......",
+".......22.......",
+".......22.......",
+"...311.22.113...",
+"....33.22.33....",
+".......22.......",
+".......22......."]);
+SPR.relic = [S([
+"...33...",
+"..3113..",
+".310013.",
+".310013.",
+"..3113..",
+"...33..."]), S([
+"...33...",
+"..3003..",
+".301103.",
+".301103.",
+"..3003..",
+"...33..."])];
+SPR.bison = S([
+"................",
+".3............3.",
+".33.33333333.33.",
+"...3222222223...",
+"...3202202223...",
+"...3222222223...",
+"...3200000023...",
+"...3200330023...",
+"...3222222223...",
+"..322222222223..",
+"..322222222223..",
+"..322222222223..",
+"..322222222223..",
+"...33..33..33...",
+"...33..33..33...",
+"................"]);
+SPR.panda = S([
+"..33........33..",
+"..333333333333..",
+".30000000000003.",
+".30330000033003.",
+".30330000033003.",
+".30000330000003.",
+".30000000000003.",
+"..333333333333..",
+"...3300000033...",
+"...3300000033...",
+"...3000000003...",
+"...3000000003...",
+"...3333333333...",
+"...33......33...",
+"...33......33...",
+"................"]);
+SPR.heart = S([
+".33.33.",
+"3333333",
+"3333333",
+".33333.",
+"..333..",
+"...3..."]);
+SPR.heartEmpty = S([
+".33.33.",
+"3..3..3",
+"3.....3",
+".3...3.",
+"..3.3..",
+"...3..."]);
+SPR.cloud = S([
+"...1111....",
+".11111111..",
+"11111111111",
+".111111111."]);
+// 8x8 terrain tiles
+SPR.tGrass = S([
+".3...3..",
+"11111111",
+"31313131",
+"22222222",
+"22222322",
+"22222222",
+"23222222",
+"22222232"]);
+SPR.tDirt = S([
+"22222222",
+"22322222",
+"22222222",
+"22222232",
+"22222222",
+"23222222",
+"22222222",
+"22222322"]);
+SPR.tBranch = S([
+"11111111",
+"33333333"]);
+SPR.mplat = S([
+"311111111111111111111113",
+"322222222222222222222223",
+"333333333333333333333333",
+"...3.......3.........3.."]);
+
+// ---------- Tiny 3x5 font ----------
+const FONT = {
+A:["010","101","111","101","101"],B:["110","101","110","101","110"],
+C:["011","100","100","100","011"],D:["110","101","101","101","110"],
+E:["111","100","110","100","111"],F:["111","100","110","100","100"],
+G:["011","100","101","101","011"],H:["101","101","111","101","101"],
+I:["111","010","010","010","111"],J:["001","001","001","101","010"],
+K:["101","110","100","110","101"],L:["100","100","100","100","111"],
+M:["10001","11011","10101","10001","10001"],N:["1001","1101","1011","1001","1001"],
+O:["010","101","101","101","010"],P:["110","101","110","100","100"],
+Q:["010","101","101","011","001"],R:["110","101","110","101","101"],
+S:["011","100","010","001","110"],T:["111","010","010","010","010"],
+U:["101","101","101","101","111"],V:["101","101","101","101","010"],
+W:["10001","10001","10101","11011","10001"],X:["101","101","010","101","101"],
+Y:["101","101","010","010","010"],Z:["111","001","010","100","111"],
+"0":["111","101","101","101","111"],"1":["010","110","010","010","111"],
+"2":["110","001","010","100","111"],"3":["110","001","010","001","110"],
+"4":["101","101","111","001","001"],"5":["111","100","110","001","110"],
+"6":["011","100","110","101","010"],"7":["111","001","010","010","010"],
+"8":["010","101","010","101","010"],"9":["010","101","011","001","110"],
+".":["0","0","0","0","1"],",":["00","00","00","01","10"],
+"!":["1","1","1","0","1"],"?":["110","001","010","000","010"],
+"-":["000","000","111","000","000"],"/":["001","001","010","100","100"],
+":":["0","1","0","1","0"],"'":["1","1","0","0","0"]," ":["00","00","00","00","00"],
+};
+function textW(str, scale) {
+  scale = scale || 1; let w = 0;
+  for (const ch of str) { const g = FONT[ch] || FONT['?']; w += (g[0].length + 1) * scale; }
+  return w - scale;
+}
+function drawText(str, x, y, col, scale) {
+  scale = scale || 1;
+  let cx = x | 0;
+  for (const ch of str) {
+    const g = FONT[ch] || FONT['?'];
+    for (let gy = 0; gy < 5; gy++) for (let gx = 0; gx < g[gy].length; gx++) {
+      if (g[gy][gx] === '1') fbRect(cx + gx * scale, y + gy * scale, scale, scale, col);
+    }
+    cx += (g[0].length + 1) * scale;
+  }
+}
+function drawTextC(str, y, col, scale) { drawText(str, (W - textW(str, scale)) / 2, y, col, scale); }
+
+// ---------- Input ----------
+const IN = { l:0, r:0, u:0, d:0, a:0, b:0, start:0 };
+const inPrev = { a:0, start:0 };
+let aPressed = false, startPressed = false;
+function pollEdges() {
+  aPressed = IN.a && !inPrev.a;
+  startPressed = IN.start && !inPrev.start;
+  inPrev.a = IN.a; inPrev.start = IN.start;
+}
+const KEYMAP = { ArrowLeft:'l', ArrowRight:'r', ArrowUp:'u', ArrowDown:'d', KeyZ:'a', KeyX:'b', Enter:'start' };
+addEventListener('keydown', e => {
+  const k = KEYMAP[e.code]; if (k) { IN[k] = 1; e.preventDefault(); }
+});
+addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) IN[k] = 0; });
+
+// touch: d-pad computes direction from pointer position; buttons are simple
+const dpadEl = document.getElementById('dpad');
+const dpadPtrs = new Map();
+function dpadUpdate() {
+  IN.l = IN.r = IN.u = IN.d = 0;
+  const rc = dpadEl.getBoundingClientRect();
+  for (const p of dpadPtrs.values()) {
+    const dx = (p.x - (rc.left + rc.width / 2)) / (rc.width / 2);
+    const dy = (p.y - (rc.top + rc.height / 2)) / (rc.height / 2);
+    if (dx < -0.25) IN.l = 1; if (dx > 0.25) IN.r = 1;
+    if (dy < -0.25) IN.u = 1; if (dy > 0.25) IN.d = 1;
+  }
+}
+dpadEl.addEventListener('pointerdown', e => { dpadEl.setPointerCapture(e.pointerId);
+  dpadPtrs.set(e.pointerId, { x:e.clientX, y:e.clientY }); dpadUpdate(); e.preventDefault(); });
+dpadEl.addEventListener('pointermove', e => { if (dpadPtrs.has(e.pointerId)) {
+  dpadPtrs.set(e.pointerId, { x:e.clientX, y:e.clientY }); dpadUpdate(); } });
+function dpadEnd(e) { dpadPtrs.delete(e.pointerId); dpadUpdate(); }
+dpadEl.addEventListener('pointerup', dpadEnd);
+dpadEl.addEventListener('pointercancel', dpadEnd);
+function bindBtn(id, key) {
+  const el = document.getElementById(id);
+  el.addEventListener('pointerdown', e => { IN[key] = 1; el.classList.add('pressed'); e.preventDefault(); });
+  el.addEventListener('pointerup',   e => { IN[key] = 0; el.classList.remove('pressed'); });
+  el.addEventListener('pointercancel', e => { IN[key] = 0; el.classList.remove('pressed'); });
+}
+bindBtn('btnA', 'a'); bindBtn('btnB', 'b'); bindBtn('btnStart', 'start');
+// tapping the screen = START on menus only (never pauses gameplay)
+cv.addEventListener('pointerdown', e => {
+  if (state !== 'play' && state !== 'pause') IN.start = 1;
+  e.preventDefault();
+});
+cv.addEventListener('pointerup', () => { IN.start = 0; });
+
+// ---------- Save ----------
+const SAVE_KEY = 'legendary-lemur-save-v1';
+let SAVE;
+function defaultSave() { return { v:1, shards:[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]], unlocked:1, audio:true }; }
+function loadSave() {
+  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1) return s; } catch (e) {}
+  return defaultSave();
+}
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) {} }
+SAVE = loadSave();
+function totalShards() { return SAVE.shards.flat().reduce((a, b) => a + b, 0); }
+function legendLevel() { return Math.floor(totalShards() / 3); }
+const UPGRADES = ['HIGHER JUMP', 'FASTER CLIMB', 'LONGER SWING', 'LEGEND DASH', 'TRUE LEGEND'];
+
+// ---------- Level 1 map ----------
+function pad(s, w) { return (s + '.'.repeat(w)).slice(0, w); }
+function chunk(w, rows) { const out = []; for (let r = 0; r < ROWS; r++) out.push(pad(rows[r] || '', w)); return out; }
+function g(w) { return '#'.repeat(w); }
+const L1_CHUNKS = [
+  chunk(20, { 19:'...S', 20:g(20), 21:g(20), 22:g(20), 23:g(20) }),
+  chunk(24, { 18:'...##', 19:'...##',
+    20:'##########....####....##', 21:'##########....####....##',
+    22:'##########....####....##', 23:'##################....##' }),
+  chunk(20, { 19:'..........e', 20:g(20), 21:g(20), 22:g(20), 23:g(20) }),
+  chunk(22, { 19:'......p.......p', 20:g(22), 21:g(22), 22:g(22), 23:g(22) }),
+  chunk(32, { 3:'.'.repeat(25)+'r', 4:'.'.repeat(24)+'===', 8:'.'.repeat(21)+'===',
+    12:'.'.repeat(24)+'===', 16:'.'.repeat(20)+'===', 17:'.'.repeat(10)+'m', 19:'......n',
+    20:'#########......#################', 21:'#########......#################',
+    22:'#########......#################', 23:'#########......#################' }),
+  chunk(12, { 19:'.....c', 20:g(12), 21:g(12), 22:g(12), 23:g(12) }),
+  chunk(40, { 16:'.'.repeat(15)+'==', 17:'........p', 18:'......######',
+    19:'......######..........e...........p',
+    20:'##############....########.....#########',
+    21:'##############....########.....#########',
+    22:'##############....########..r..#########',
+    23:'##############....######################' }),
+  chunk(22, { 9:'.'.repeat(13)+'r', 11:'.'.repeat(12)+'===',
+    16:'........##', 17:'........##', 18:'........##', 19:'........##',
+    20:g(22), 21:g(22), 22:g(22), 23:g(22) }),
+  chunk(18, { 19:'........E', 20:g(18), 21:g(18), 22:g(18), 23:g(18) }),
+];
+// join chunks -> tile grid + markers
+let MAP, MAPW, markers;
+function buildMap() {
+  const rows = [];
+  for (let r = 0; r < ROWS; r++) rows.push(L1_CHUNKS.map(c => c[r]).join(''));
+  MAPW = rows[0].length;
+  MAP = new Uint8Array(MAPW * ROWS);
+  markers = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < MAPW; c++) {
+    const ch = rows[r][c];
+    if (ch === '#') MAP[r * MAPW + c] = 1;
+    else if (ch === '=') MAP[r * MAPW + c] = 2;
+    else if (ch !== '.') markers.push({ ch, c, r });
+  }
+}
+buildMap();
+const LEVEL_W = () => MAPW * TS, LEVEL_H = ROWS * TS;
+function tileAt(cx, cy) {
+  if (cx < 0 || cx >= MAPW) return 1;
+  if (cy < 0 || cy >= ROWS) return 0;
+  return MAP[cy * MAPW + cx];
+}
+
+// ---------- Entities ----------
+let player, beetles, plants, relics, npcs, platforms, gate, checkpoint, spawnPt;
+function resetLevel(fromCheckpoint) {
+  beetles = []; plants = []; relics = []; npcs = []; platforms = []; gate = null;
+  let ri = 0;
+  const shardMarks = markers.filter(m => m.ch === 'r').sort((a, b) => a.c - b.c);
+  for (const m of markers) {
+    const x = m.c * TS, y = m.r * TS;
+    if (m.ch === 'S') spawnPt = { x, y: y - 8 };
+    else if (m.ch === 'e') beetles.push({ x, y: y + 3, dir: -1, alive: true, t: 0 });
+    else if (m.ch === 'p') plants.push({ x: x - 4, y: y - 8, t: (x * 7) % 60 });
+    else if (m.ch === 'm') platforms.push({ baseX: x - 8, x: x - 8, y, t: 0, dx: 0 });
+    else if (m.ch === 'c') npcs.push({ kind: 'bison', x: x - 4, y: y - 8 });
+    else if (m.ch === 'n') npcs.push({ kind: 'panda', x: x - 4, y: y - 8 });
+    else if (m.ch === 'E') gate = { x, y: y + 8 };
+  }
+  shardMarks.forEach((m, i) => relics.push({ x: m.c * TS, y: m.r * TS + 1, id: i, taken: !!SAVE.shards[0][i] }));
+  const sp = (fromCheckpoint && checkpoint) ? checkpoint : spawnPt;
+  player = {
+    x: sp.x, y: sp.y, vx: 0, vy: 0, face: 1, grounded: false,
+    coyote: 0, buffer: 0, jumping: false, anim: 0, hearts: 3, invuln: 0,
+    dead: 0, onPlat: null,
+  };
+  camX = Math.max(0, Math.min(player.x - 60, LEVEL_W() - W));
+  camYT = Math.max(0, Math.min(player.y - 92, LEVEL_H - H));
+  camY = camYT;
+}
+function jumpV0() { return TUNING.jumpV0 + (legendLevel() >= 1 ? TUNING.jumpV0Up : 0); }
+
+// ---------- Physics ----------
+const HB = { x: 3, y: 2, w: 10, h: 14 }; // player hitbox within 16x16 sprite
+function collideMove(p) {
+  // horizontal
+  p.x += p.vx;
+  let l = p.x + HB.x, r = p.x + HB.x + HB.w, t = p.y + HB.y, b = p.y + HB.y + HB.h;
+  let c0 = Math.floor(l / TS), c1 = Math.floor((r - 0.01) / TS);
+  let r0 = Math.floor(t / TS), r1 = Math.floor((b - 0.01) / TS);
+  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
+    if (tileAt(cx, cy) === 1) {
+      if (p.vx > 0) p.x = cx * TS - HB.x - HB.w;
+      else if (p.vx < 0) p.x = (cx + 1) * TS - HB.x;
+      p.vx = 0;
+      l = p.x + HB.x; r = l + HB.w; c0 = Math.floor(l / TS); c1 = Math.floor((r - 0.01) / TS);
+    }
+  }
+  // vertical
+  const prevB = p.y + HB.y + HB.h;
+  p.y += p.vy;
+  p.grounded = false; p.onPlat = null;
+  l = p.x + HB.x; r = l + HB.w; t = p.y + HB.y; b = t + HB.h;
+  c0 = Math.floor(l / TS); c1 = Math.floor((r - 0.01) / TS);
+  r0 = Math.floor(t / TS); r1 = Math.floor((b - 0.01) / TS);
+  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
+    const tl = tileAt(cx, cy);
+    if (tl === 1) {
+      if (p.vy > 0) { p.y = cy * TS - HB.y - HB.h; p.grounded = true; }
+      else if (p.vy < 0) { p.y = (cy + 1) * TS - HB.y; }
+      p.vy = 0;
+      t = p.y + HB.y; b = t + HB.h; r0 = Math.floor(t / TS); r1 = Math.floor((b - 0.01) / TS);
+    } else if (tl === 2 && p.vy > 0 && prevB <= cy * TS + 0.01) {
+      p.y = cy * TS - HB.y - HB.h; p.vy = 0; p.grounded = true;
+      t = p.y + HB.y; b = t + HB.h; r0 = Math.floor(t / TS); r1 = Math.floor((b - 0.01) / TS);
+    }
+  }
+  // moving platforms (one-way tops)
+  for (const pl of platforms) {
+    const pt = pl.y, plL = pl.x, plR = pl.x + 24;
+    const fb2 = p.y + HB.y + HB.h;
+    if (p.vy >= 0 && prevB <= pt + 2 && fb2 >= pt && fb2 <= pt + 5 &&
+        p.x + HB.x + HB.w > plL + 1 && p.x + HB.x < plR - 1) {
+      p.y = pt - HB.y - HB.h; p.vy = 0; p.grounded = true; p.onPlat = pl;
+    }
+  }
+}
+
+function updatePlayer() {
+  const p = player;
+  if (p.dead > 0) { // death hop animation
+    p.dead++; p.vy = Math.min(p.vy + TUNING.gravDown, TUNING.term); p.y += p.vy;
+    if (p.dead === 50) startFade(() => { resetLevel(true); });
+    return;
+  }
+  // horizontal
+  const dir = (IN.r ? 1 : 0) - (IN.l ? 1 : 0);
+  const max = IN.b ? TUNING.run : TUNING.walk;
+  if (dir !== 0) {
+    p.face = dir;
+    const a = (dir * p.vx < 0) ? TUNING.skid : TUNING.acc;
+    p.vx += dir * a;
+    if (Math.abs(p.vx) > max && dir * p.vx > 0) p.vx = dir * Math.max(Math.abs(p.vx) - TUNING.dec, max);
+  } else {
+    if (p.vx > 0) p.vx = Math.max(0, p.vx - TUNING.dec);
+    else if (p.vx < 0) p.vx = Math.min(0, p.vx + TUNING.dec);
+  }
+  // jump: buffer + coyote
+  if (aPressed) p.buffer = TUNING.buffer;
+  else if (p.buffer > 0) p.buffer--;
+  if (p.grounded) p.coyote = TUNING.coyote; else if (p.coyote > 0) p.coyote--;
+  if (p.buffer > 0 && (p.grounded || p.coyote > 0)) {
+    p.vy = -jumpV0(); p.grounded = false; p.coyote = 0; p.buffer = 0; p.jumping = true;
+  }
+  // variable height: release clamp
+  if (!IN.a && p.vy < -TUNING.minJump) p.vy = -TUNING.minJump;
+  // gravity with apex hang
+  let grav = (p.vy < 0 && IN.a) ? TUNING.gravUp : TUNING.gravDown;
+  if (!p.grounded && IN.a && Math.abs(p.vy) < TUNING.apexBand) grav *= TUNING.apexMul;
+  p.vy = Math.min(p.vy + grav, TUNING.term);
+
+  // ride platform before own movement
+  if (p.onPlat) p.x += p.onPlat.dx;
+  collideMove(p);
+  if (p.grounded) p.jumping = false;
+  if (p.invuln > 0) p.invuln--;
+  p.anim++;
+
+  // fell into pit
+  if (p.y > LEVEL_H + 24) { killPlayer(true); }
+
+  // relics
+  for (const rl of relics) {
+    if (rl.taken) continue;
+    if (p.x + HB.x < rl.x + 8 && p.x + HB.x + HB.w > rl.x && p.y + HB.y < rl.y + 6 && p.y + HB.y + HB.h > rl.y) {
+      rl.taken = true; SAVE.shards[0][rl.id] = 1; persist();
+      const tot = totalShards();
+      if (tot % 3 === 0) { state = 'levelup'; stateT = 0; }
+      else { toast = 'RELIC SHARD ' + tot + '/15'; toastT = 90; }
+    }
+  }
+  // checkpoint
+  for (const n of npcs) if (n.kind === 'bison' && !checkpoint && p.x > n.x) {
+    checkpoint = { x: n.x, y: n.y }; toast = 'CHECKPOINT!'; toastT = 90;
+  }
+  // gate
+  if (gate && p.x + 8 > gate.x - 2 && p.x < gate.x + 14 && p.y > gate.y - 44) {
+    state = 'clear'; stateT = 0; SAVE.unlocked = Math.max(SAVE.unlocked, 2); persist();
+  }
+}
+
+function hurtPlayer(fromX) {
+  const p = player;
+  if (p.invuln > 0 || p.dead > 0) return;
+  p.hearts--; flashInv = 3;
+  if (p.hearts <= 0) { killPlayer(false); return; }
+  p.invuln = TUNING.invuln;
+  p.vx = (p.x + 8 < fromX ? -1.5 : 1.5); p.vy = -2;
+}
+function killPlayer(pit) {
+  const p = player;
+  if (p.dead > 0) return;
+  p.dead = 1; p.vy = pit ? 1 : -3; p.vx = 0; flashInv = 4;
+}
+
+function updateEnemies() {
+  const camL = camX - 24, camR = camX + W + 24;
+  for (const b of beetles) {
+    if (!b.alive || b.x < camL || b.x > camR) continue;
+    b.t++;
+    b.x += b.dir * 0.4;
+    const footC = Math.floor((b.x + (b.dir > 0 ? 7 : 0)) / TS);
+    const rowB = Math.floor((b.y + 6) / TS);
+    if (tileAt(footC, rowB) !== 1 || tileAt(footC, rowB - 1) === 1) { b.dir *= -1; b.x += b.dir * 0.8; }
+    // vs player
+    const p = player;
+    if (p.dead === 0 && p.x + HB.x < b.x + 8 && p.x + HB.x + HB.w > b.x &&
+        p.y + HB.y < b.y + 5 && p.y + HB.y + HB.h > b.y) {
+      if (p.vy > 0.5 && p.y + HB.y + HB.h - p.vy <= b.y + 3) {
+        b.alive = false;
+        p.vy = -(IN.a ? TUNING.stompHold : TUNING.stomp);
+      } else hurtPlayer(b.x + 4);
+    }
+  }
+  for (const pl of plants) {
+    pl.t = (pl.t + 1) % 140; // 0-79 closed, 80-139 open
+    const open = pl.t >= 80;
+    if (open) {
+      const p = player;
+      if (p.dead === 0 && p.x + HB.x < pl.x + 11 && p.x + HB.x + HB.w > pl.x + 4 &&
+          p.y + HB.y < pl.y + 8 && p.y + HB.y + HB.h > pl.y) hurtPlayer(pl.x + 8);
+    }
+  }
+  for (const pl of platforms) {
+    pl.t++;
+    const nx = pl.baseX + Math.sin(pl.t * 0.025) * 22;
+    pl.dx = nx - pl.x; pl.x = nx;
+  }
+}
+
+// ---------- Camera ----------
+let camX = 0, camY = 0, camYT = 0;
+function updateCamera() {
+  const p = player;
+  const bias = p.face > 0 ? 60 : 84;
+  const tx = Math.max(0, Math.min(p.x - bias, LEVEL_W() - W));
+  camX += (tx - camX) * 0.12;
+  if (Math.abs(tx - camX) < 0.3) camX = tx;
+  if (p.grounded || p.dead) camYT = Math.max(0, Math.min(p.y - 92, LEVEL_H - H));
+  camY += (camYT - camY) * 0.1;
+}
+
+// ---------- Rendering ----------
+function drawBackdrop() {
+  clearFB(0);
+  // clouds, parallax .25
+  for (let i = 0; i < 5; i++) {
+    let cx2 = ((i * 89 + 20 - camX * 0.25) % (W + 40) + W + 40) % (W + 40) - 20;
+    drawSpr(SPR.cloud, cx2, 14 + (i % 3) * 11, false);
+  }
+  // distant canopy silhouette, parallax .5
+  for (let sx = 0; sx < W; sx++) {
+    const wx = Math.floor(sx + camX * 0.5);
+    const bump = ((wx >> 3) * 29 % 7) + ((wx >> 2) * 13 % 3);
+    const top = 90 - Math.floor(camY * 0.3) + bump;
+    for (let yy = Math.max(0, top); yy < Math.min(H, 118 - Math.floor(camY * 0.3)); yy++) FB[yy * W + sx] = 1;
+  }
+}
+function drawTiles() {
+  const c0 = Math.floor(camX / TS), c1 = Math.floor((camX + W) / TS);
+  const r0 = Math.floor(camY / TS), r1 = Math.floor((camY + H) / TS);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+    const t = tileAt(c, r);
+    if (t === 0) continue;
+    const sx = c * TS - Math.round(camX), sy = r * TS - Math.round(camY);
+    if (t === 1) drawSpr(tileAt(c, r - 1) === 1 ? SPR.tDirt : SPR.tGrass, sx, sy);
+    else if (t === 2) drawSpr(SPR.tBranch, sx, sy);
+  }
+}
+function drawGate() {
+  if (!gate) return;
+  const x = gate.x - Math.round(camX), gy = gate.y - Math.round(camY);
+  // foliage
+  fbRect(x - 6, gy - 46, 28, 14, 1);
+  fbRect(x - 4, gy - 48, 24, 2, 1);
+  fbRect(x - 6, gy - 33, 28, 1, 3);
+  // trunk
+  fbRect(x, gy - 32, 16, 32, 2);
+  fbRect(x, gy - 32, 1, 32, 3); fbRect(x + 15, gy - 32, 1, 32, 3);
+  // doorway
+  fbRect(x + 4, gy - 14, 8, 14, 3);
+  drawText('GOAL', x - 1, gy - 26, 0);
+}
+function drawEntities() {
+  const ox = -Math.round(camX), oy = -Math.round(camY);
+  for (const pl of platforms) drawSpr(SPR.mplat, pl.x + ox, pl.y + oy);
+  for (const rl of relics) if (!rl.taken) drawSpr(SPR.relic[(frame >> 4) & 1], rl.x + ox, rl.y + oy);
+  for (const n of npcs) drawSpr(n.kind === 'bison' ? SPR.bison : SPR.panda, n.x + ox, n.y + oy, n.kind === 'panda');
+  for (const pl of plants) {
+    const open = pl.t >= 80;
+    const jit = (!open && pl.t > 68) ? ((pl.t >> 1) & 1) : 0;
+    drawSpr(open ? SPR.plantOpen : SPR.plantClosed, pl.x + ox + jit, pl.y + oy);
+  }
+  for (const b of beetles) if (b.alive) drawSpr(SPR.beetle[(b.t >> 3) & 1], b.x + ox, b.y + oy, b.dir > 0);
+  // player
+  const p = player;
+  if (!(p.invuln > 0 && (frame & 3) < 2)) {
+    let spr = SPR.lemurIdle;
+    if (!p.grounded) spr = SPR.lemurJump;
+    else if (Math.abs(p.vx) > 0.1) spr = ((p.anim >> 3) & 1) ? SPR.lemurWalk : SPR.lemurIdle;
+    drawSpr(spr, Math.round(p.x) + ox, Math.round(p.y) + oy, p.face < 0);
+  }
+}
+function drawHUD() {
+  for (let i = 0; i < 3; i++) drawSpr(player.hearts > i ? SPR.heart : SPR.heartEmpty, 3 + i * 9, 2);
+  const tot = totalShards();
+  drawSpr(SPR.relic[0], 62, 1);
+  drawText(tot + '/15', 71, 2, 3);
+  drawText('LV' + legendLevel(), 116, 2, 3);
+  for (let i = 0; i < 3; i++) {
+    const filled = (tot % 3) > i && tot < 15;
+    fbRect(132 + i * 8, 2, 6, 5, filled ? 3 : 0);
+    if (!filled) { fbRect(132 + i * 8, 2, 6, 1, 3); fbRect(132 + i * 8, 6, 6, 1, 3);
+      fbRect(132 + i * 8, 2, 1, 5, 3); fbRect(137 + i * 8, 2, 1, 5, 3); }
+  }
+}
+function drawTextbox(lines) {
+  fbRect(4, 112, 152, 28, 0);
+  fbRect(4, 112, 152, 1, 3); fbRect(4, 139, 152, 1, 3);
+  fbRect(4, 112, 1, 28, 3); fbRect(155, 112, 1, 28, 3);
+  lines.forEach((ln, i) => drawText(ln, 9, 117 + i * 8, 3));
+}
+const QUIPS = {
+  panda: ['PATIENT PANDA:', 'WAITING IS THE HARDEST PART.'],
+  bison: ['BRAVE BISON:', "WE'RE BORN TO BE BRAVE!"],
+};
+function drawNpcQuips() {
+  for (const n of npcs) {
+    if (Math.abs(player.x - n.x) < 26 && Math.abs(player.y - n.y) < 24) {
+      drawTextbox(QUIPS[n.kind]); return;
+    }
+  }
+}
+
+// ---------- Title screen ----------
+function drawTitle() {
+  clearFB(0);
+  // card frame
+  fbRect(5, 4, 150, 136, 0);
+  for (const [x, y, w2, h2] of [[5,4,150,2],[5,138,150,2],[5,4,2,136],[153,4,2,136]]) fbRect(x, y, w2, h2, 3);
+  fbRect(9, 8, 142, 128, 1); fbRect(11, 10, 138, 124, 0);
+  drawTextC('VEEFRIENDS', 15, 3);
+  fbRect(30, 22, 100, 1, 2);
+  drawText('GO-7', 15, 15, 2);
+  drawText('01/10', 124, 15, 2);
+  drawTextC('LEGENDARY', 30, 3, 2);
+  drawTextC('LEMUR', 44, 3, 3);
+  drawSpr(SPR.lemurJump, 56, 60, false, 3);
+  // motto ticker
+  const motto = 'LEAPING INTO LEGEND, ONE BRANCH AT A TIME...   ';
+  const mw = textW(motto);
+  const mx = 13 - Math.floor((frame / 2) % mw);
+  drawText(motto + motto, mx, 118, 2);
+  // re-mask card edges over ticker overflow
+  fbRect(0, 117, 13, 7, 0); fbRect(147, 117, 13, 7, 0);
+  fbRect(5, 117, 2, 7, 3); fbRect(153, 117, 2, 7, 3);
+  fbRect(9, 117, 2, 7, 1); fbRect(149, 117, 2, 7, 1);
+  if ((frame >> 5) & 1) drawTextC('PRESS START', 128, 3);
+  const tot = totalShards();
+  if (tot > 0) drawTextC('SHARDS ' + tot + '/15  LV' + legendLevel(), 58, 2);
+  drawText('TREE TOP TACTICS', 48, 108, 3);
+  // refractor shimmer band
+  const t = (frame * 2) % 300;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const d = x + y - t + 40;
+    if (d > 0 && d < 12) { const i = y * W + x; if (FB[i] > 0) FB[i]--; }
+  }
+}
+
+// ---------- Game states & loop ----------
+let state = 'title', stateT = 0, frame = 0;
+let toast = '', toastT = 0;
+let fadeCb = null, fadeDir = 0;
+function startFade(cb) { fadeDir = 1; fadeCb = cb; }
+function updateFade() {
+  if (fadeDir === 1) { if (frame % 4 === 0) fade++; if (fade >= 4) { fadeDir = -1; if (fadeCb) { fadeCb(); fadeCb = null; } } }
+  else if (fadeDir === -1) { if (frame % 4 === 0) fade--; if (fade <= 0) { fade = 0; fadeDir = 0; } }
+}
+
+function step() {
+  frame++;
+  pollEdges();
+  updateFade();
+  if (flashInv > 0) flashInv--;
+  if (toastT > 0) toastT--;
+
+  if (state === 'title') {
+    drawTitle();
+    if ((startPressed || aPressed) && fadeDir === 0) {
+      startFade(() => { checkpoint = null; resetLevel(false); state = 'intro'; stateT = 0; });
+    }
+  }
+  else if (state === 'intro') {
+    stateT++;
+    renderWorld();
+    fbRect(20, 60, 120, 20, 0); fbRect(20, 60, 120, 1, 3); fbRect(20, 79, 120, 1, 3);
+    drawTextC('LEVEL 1', 63, 3); drawTextC('JUNGLE CANOPY', 71, 3);
+    if (stateT > 100 || startPressed || aPressed) state = 'play';
+  }
+  else if (state === 'play') {
+    if (startPressed) { state = 'pause'; }
+    else {
+      updateEnemies();
+      updatePlayer();
+      updateCamera();
+    }
+    renderWorld();
+    drawNpcQuips();
+    if (toastT > 0) drawTextC(toast, 34, 3);
+  }
+  else if (state === 'pause') {
+    renderWorld();
+    fbRect(50, 62, 60, 16, 0); fbRect(50, 62, 60, 1, 3); fbRect(50, 77, 60, 1, 3);
+    drawTextC('PAUSE', 68, 3);
+    if (startPressed) state = 'play';
+  }
+  else if (state === 'levelup') {
+    stateT++;
+    renderWorld();
+    fbRect(16, 48, 128, 44, 0);
+    fbRect(16, 48, 128, 2, 3); fbRect(16, 90, 128, 2, 3); fbRect(16, 48, 2, 44, 3); fbRect(142, 48, 2, 44, 3);
+    drawTextC('LEVEL UP!', 54, 3, 2);
+    drawTextC(UPGRADES[legendLevel() - 1] || '', 70, 3);
+    drawTextC('LEGEND LV ' + legendLevel(), 80, 2);
+    if (stateT > 40 && (aPressed || startPressed || stateT > 160)) state = 'play';
+  }
+  else if (state === 'clear') {
+    stateT++;
+    renderWorld();
+    fbRect(16, 52, 128, 36, 0);
+    fbRect(16, 52, 128, 2, 3); fbRect(16, 86, 128, 2, 3); fbRect(16, 52, 2, 36, 3); fbRect(142, 52, 2, 36, 3);
+    drawTextC('LEVEL CLEAR!', 58, 3, 2);
+    drawTextC('MORE LEVELS COMING SOON', 76, 2);
+    if (stateT > 90 && (aPressed || startPressed)) {
+      startFade(() => { state = 'title'; });
+    }
+  }
+  blit();
+}
+function renderWorld() {
+  drawBackdrop();
+  drawTiles();
+  drawGate();
+  drawEntities();
+  drawHUD();
+}
+
+// fixed timestep loop
+let last = 0, acc = 0;
+function loop(ts) {
+  requestAnimationFrame(loop);
+  if (!last) last = ts;
+  acc += Math.min(ts - last, 100); last = ts;
+  const stepMs = 1000 / 60;
+  let n = 0;
+  while (acc >= stepMs && n < 5) { step(); acc -= stepMs; n++; }
+}
+requestAnimationFrame(loop);
+document.addEventListener('visibilitychange', () => { last = 0; acc = 0; });
+
+// integer-ish scaling
+function fit() {
+  const availW = Math.min(innerWidth, 430) - 48;
+  const availH = innerHeight * 0.52;
+  let s = Math.min(availW / W, availH / H);
+  if (s >= 2) s = Math.floor(s);
+  cv.style.width = (W * s) + 'px';
+  cv.style.height = (H * s) + 'px';
+}
+addEventListener('resize', fit);
+fit();
+// debug: open index.html#play to skip the title screen
+if (location.hash === '#play') { checkpoint = null; resetLevel(false); state = 'play'; }
+</script>
+</body>
+</html>

@@ -145,8 +145,9 @@ floor), second is identical but lethal, then combined.
   handheld-console frame (rounded shell, d-pad/buttons — the Pocket look)
   around the screen; the boot shows a card-style title: bordered frame,
   "VeeFriends™" arch, big **LEGENDARY LEMUR** wordmark, Lemur mid-leap pose,
-  motto ticker "LEAPING INTO LEGEND, ONE BRANCH AT A TIME", card number "#52"
-  corner tag, and a chrome-refractor palette-cycle shimmer. PRESS START.
+  motto ticker "LEAPING INTO LEGEND, ONE BRANCH AT A TIME", corner tags matching
+  the owner's actual card — **"GO-7"** (Game On insert) and serial **"01/10"** —
+  and a chrome-refractor palette-cycle shimmer. PRESS START.
 - **HUD** (top row, 8px font): hearts ×3, shard count `◆ n/15`, LEGEND meter
   (3-pip fill toward next level-up), level name on entry.
 - Fake GB boot "ding + logo drop" on load. Palette-step fades everywhere.
