@@ -91,6 +91,7 @@ const TUNING = {
   coyote: 6, buffer: 8,
   stomp: 2.2, stompHold: 3.4,
   invuln: 90,
+  climb: 0.7, climbFast: 1.05, climbSide: 0.5,
 };
 
 // ---------- Palette ----------
@@ -336,6 +337,45 @@ SPR.mplat = S([
 "322222222222222222222223",
 "333333333333333333333333",
 "...3.......3.........3.."]);
+SPR.tTrunk = S([
+"23222321",
+"23222322",
+"22322321",
+"23222322",
+"23221322",
+"22322322",
+"23222321",
+"23222322"]);
+SPR.empy = S([
+"................",
+"................",
+"....31111113....",
+".30331311313303.",
+".30331111113303.",
+".33.31111113.33.",
+"....31111113....",
+"....33311333....",
+"..311111111113..",
+"..311132231113..",
+"..311132231113..",
+"..311133331113..",
+"..311111111113..",
+"..333333333333..",
+"...33......33...",
+"................"]);
+SPR.pecker = [S([
+"..33....",
+".3223...",
+"32222333",
+".32223..",
+"..333...",
+"..3.3..."]), S([
+"........",
+"..33....",
+".3223...",
+"32222333",
+".32223..",
+"..3.3..."])];
 
 // ---------- Tiny 3x5 font ----------
 const FONT = {
@@ -382,12 +422,14 @@ function drawTextC(str, y, col, scale) { drawText(str, (W - textW(str, scale)) /
 
 // ---------- Input ----------
 const IN = { l:0, r:0, u:0, d:0, a:0, b:0, start:0 };
-const inPrev = { a:0, start:0 };
-let aPressed = false, startPressed = false;
+const inPrev = { a:0, start:0, u:0, d:0 };
+let aPressed = false, startPressed = false, uPressed = false, dPressed = false;
 function pollEdges() {
   aPressed = IN.a && !inPrev.a;
   startPressed = IN.start && !inPrev.start;
-  inPrev.a = IN.a; inPrev.start = IN.start;
+  uPressed = IN.u && !inPrev.u;
+  dPressed = IN.d && !inPrev.d;
+  inPrev.a = IN.a; inPrev.start = IN.start; inPrev.u = IN.u; inPrev.d = IN.d;
 }
 const KEYMAP = { ArrowLeft:'l', ArrowRight:'r', ArrowUp:'u', ArrowDown:'d', KeyZ:'a', KeyX:'b', Enter:'start' };
 addEventListener('keydown', e => {
@@ -443,9 +485,9 @@ function totalShards() { return SAVE.shards.flat().reduce((a, b) => a + b, 0); }
 function legendLevel() { return Math.floor(totalShards() / 3); }
 const UPGRADES = ['HIGHER JUMP', 'FASTER CLIMB', 'LONGER SWING', 'LEGEND DASH', 'TRUE LEGEND'];
 
-// ---------- Level 1 map ----------
+// ---------- Levels ----------
 function pad(s, w) { return (s + '.'.repeat(w)).slice(0, w); }
-function chunk(w, rows) { const out = []; for (let r = 0; r < ROWS; r++) out.push(pad(rows[r] || '', w)); return out; }
+function chunk(w, rows) { const out = []; for (let r = 0; r < 24; r++) out.push(pad(rows[r] || '', w)); return out; }
 function g(w) { return '#'.repeat(w); }
 const L1_CHUNKS = [
   chunk(20, { 19:'...S', 20:g(20), 21:g(20), 22:g(20), 23:g(20) }),
@@ -470,34 +512,70 @@ const L1_CHUNKS = [
     20:g(22), 21:g(22), 22:g(22), 23:g(22) }),
   chunk(18, { 19:'........E', 20:g(18), 21:g(18), 22:g(18), 23:g(18) }),
 ];
-// join chunks -> tile grid + markers
-let MAP, MAPW, markers;
-function buildMap() {
+function buildL1() {
   const rows = [];
-  for (let r = 0; r < ROWS; r++) rows.push(L1_CHUNKS.map(c => c[r]).join(''));
-  MAPW = rows[0].length;
-  MAP = new Uint8Array(MAPW * ROWS);
+  for (let r = 0; r < 24; r++) rows.push(L1_CHUNKS.map(c => c[r]).join(''));
+  return rows;
+}
+// grid painter for non-strip levels
+function grid(w, h) { return Array.from({ length: h }, () => Array(w).fill('.')); }
+function rect(gr, c, r, w, h, ch) { for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) gr[y][x] = ch; }
+function set(gr, c, r, ch) { gr[r][c] = ch; }
+function buildL2() { // THE GREAT TRUNKS - vertical climb, 40x72 tiles
+  const gr = grid(40, 72);
+  rect(gr, 0, 68, 40, 4, '#');       // ground floor
+  rect(gr, 8, 58, 2, 10, 'T');       // trunk A (teaching: short, over ground)
+  rect(gr, 10, 60, 10, 2, '#');      // ledge 1
+  rect(gr, 16, 58, 2, 2, '#');       // step block (launch to trunk B)
+  rect(gr, 22, 44, 2, 24, 'T');      // trunk B (tall, from ground)
+  rect(gr, 12, 46, 10, 2, '#');      // ledge 2 left
+  rect(gr, 24, 46, 10, 2, '#');      // ledge 2 right
+  rect(gr, 0, 46, 6, 2, '#');        // secret alcove (west jump)
+  rect(gr, 28, 28, 2, 18, 'T');      // trunk C
+  rect(gr, 30, 30, 10, 2, '#');      // ledge 3
+  rect(gr, 36, 12, 2, 18, 'T');      // trunk D
+  rect(gr, 22, 14, 14, 2, '#');      // summit ledge
+  rect(gr, 14, 12, 3, 1, '=');       // secret branch (west jump at summit)
+  set(gr, 3, 67, 'S');
+  set(gr, 2, 45, 'r'); set(gr, 28, 26, 'r'); set(gr, 15, 11, 'r');
+  set(gr, 22, 50, 'w'); set(gr, 28, 36, 'w'); set(gr, 36, 20, 'w');
+  set(gr, 13, 45, 'n'); set(gr, 26, 45, 'c'); set(gr, 30, 67, 'e');
+  set(gr, 24, 13, 'E');
+  return gr.map(r => r.join(''));
+}
+const LEVELS = [
+  { name: 'JUNGLE CANOPY',    build: buildL1, npc: { n: 'panda', c: 'bison' } },
+  { name: 'THE GREAT TRUNKS', build: buildL2, npc: { n: 'empy',  c: 'bison' } },
+];
+let MAP, MAPW, MAPH = 24, markers, curLevel = 0;
+function loadLevel(i) {
+  curLevel = i;
+  const rows = LEVELS[i].build();
+  MAPW = rows[0].length; MAPH = rows.length;
+  MAP = new Uint8Array(MAPW * MAPH);
   markers = [];
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < MAPW; c++) {
+  for (let r = 0; r < MAPH; r++) for (let c = 0; c < MAPW; c++) {
     const ch = rows[r][c];
     if (ch === '#') MAP[r * MAPW + c] = 1;
     else if (ch === '=') MAP[r * MAPW + c] = 2;
+    else if (ch === 'T') MAP[r * MAPW + c] = 3;
     else if (ch !== '.') markers.push({ ch, c, r });
   }
+  checkpoint = null;
 }
-buildMap();
-const LEVEL_W = () => MAPW * TS, LEVEL_H = ROWS * TS;
+const LEVEL_W = () => MAPW * TS, LEVEL_H = () => MAPH * TS;
 function tileAt(cx, cy) {
   if (cx < 0 || cx >= MAPW) return 1;
-  if (cy < 0 || cy >= ROWS) return 0;
+  if (cy < 0 || cy >= MAPH) return 0;
   return MAP[cy * MAPW + cx];
 }
 
 // ---------- Entities ----------
-let player, beetles, plants, relics, npcs, platforms, gate, checkpoint, spawnPt;
+let player, beetles, plants, relics, npcs, platforms, peckers, gate, checkpoint, spawnPt;
+loadLevel(0);
 function resetLevel(fromCheckpoint) {
-  beetles = []; plants = []; relics = []; npcs = []; platforms = []; gate = null;
-  let ri = 0;
+  beetles = []; plants = []; relics = []; npcs = []; platforms = []; peckers = []; gate = null;
+  const nmap = LEVELS[curLevel].npc;
   const shardMarks = markers.filter(m => m.ch === 'r').sort((a, b) => a.c - b.c);
   for (const m of markers) {
     const x = m.c * TS, y = m.r * TS;
@@ -505,19 +583,27 @@ function resetLevel(fromCheckpoint) {
     else if (m.ch === 'e') beetles.push({ x, y: y + 3, dir: -1, alive: true, t: 0 });
     else if (m.ch === 'p') plants.push({ x: x - 4, y: y - 8, t: (x * 7) % 60 });
     else if (m.ch === 'm') platforms.push({ baseX: x - 8, x: x - 8, y, t: 0, dx: 0 });
-    else if (m.ch === 'c') npcs.push({ kind: 'bison', x: x - 4, y: y - 8 });
-    else if (m.ch === 'n') npcs.push({ kind: 'panda', x: x - 4, y: y - 8 });
+    else if (m.ch === 'c') npcs.push({ kind: nmap.c, x: x - 4, y: y - 8 });
+    else if (m.ch === 'n') npcs.push({ kind: nmap.n, x: x - 4, y: y - 8 });
     else if (m.ch === 'E') gate = { x, y: y + 8 };
+    else if (m.ch === 'w') {
+      const cL = (tileAt(m.c - 1, m.r) === 3) ? m.c - 1 : m.c;
+      let top = m.r, bot = m.r;
+      while (tileAt(cL, top - 1) === 3) top--;
+      while (tileAt(cL, bot + 1) === 3) bot++;
+      peckers.push({ x: cL * TS + 4, y, dir: 1, t: 0,
+        minY: Math.max(top * TS, y - 44), maxY: Math.min(bot * TS + 2, y + 44) });
+    }
   }
-  shardMarks.forEach((m, i) => relics.push({ x: m.c * TS, y: m.r * TS + 1, id: i, taken: !!SAVE.shards[0][i] }));
+  shardMarks.forEach((m, i) => relics.push({ x: m.c * TS, y: m.r * TS + 1, id: i, taken: !!SAVE.shards[curLevel][i] }));
   const sp = (fromCheckpoint && checkpoint) ? checkpoint : spawnPt;
   player = {
-    x: sp.x, y: sp.y, vx: 0, vy: 0, face: 1, grounded: false,
+    x: sp.x, y: sp.y, vx: 0, vy: 0, face: 1, grounded: false, climbing: false,
     coyote: 0, buffer: 0, jumping: false, anim: 0, hearts: 3, invuln: 0,
     dead: 0, onPlat: null,
   };
   camX = Math.max(0, Math.min(player.x - 60, LEVEL_W() - W));
-  camYT = Math.max(0, Math.min(player.y - 92, LEVEL_H - H));
+  camYT = Math.max(0, Math.min(player.y - 92, LEVEL_H() - H));
   camY = camYT;
 }
 function jumpV0() { return TUNING.jumpV0 + (legendLevel() >= 1 ? TUNING.jumpV0Up : 0); }
@@ -568,6 +654,49 @@ function collideMove(p) {
   }
 }
 
+function trunkOverlap(p) {
+  const l = p.x + HB.x, r = p.x + HB.x + HB.w, t = p.y + HB.y, b = p.y + HB.y + HB.h;
+  for (let cy = Math.floor(t / TS); cy <= Math.floor((b - 0.01) / TS); cy++)
+    for (let cx = Math.floor(l / TS); cx <= Math.floor((r - 0.01) / TS); cx++)
+      if (tileAt(cx, cy) === 3) return true;
+  return false;
+}
+function snapToTrunk(p) {
+  const cx = Math.floor((p.x + 8) / TS), cy = Math.floor((p.y + HB.y + 7) / TS);
+  let c = cx;
+  if (tileAt(c, cy) !== 3) {
+    if (tileAt(cx - 1, cy) === 3) c = cx - 1;
+    else if (tileAt(cx + 1, cy) === 3) c = cx + 1;
+    else return;
+  }
+  const cL = (tileAt(c - 1, cy) === 3) ? c - 1 : c;
+  const center = (tileAt(cL + 1, cy) === 3) ? (cL + 1) * TS : cL * TS + 4;
+  p.x = center - 8;
+}
+function checkPickups(p) {
+  // fell into pit
+  if (p.y > LEVEL_H() + 24) killPlayer(true);
+  // relics
+  for (const rl of relics) {
+    if (rl.taken) continue;
+    if (p.x + HB.x < rl.x + 8 && p.x + HB.x + HB.w > rl.x && p.y + HB.y < rl.y + 6 && p.y + HB.y + HB.h > rl.y) {
+      rl.taken = true; SAVE.shards[curLevel][rl.id] = 1; persist();
+      const tot = totalShards();
+      if (tot % 3 === 0) { state = 'levelup'; stateT = 0; }
+      else { toast = 'RELIC SHARD ' + tot + '/15'; toastT = 90; }
+    }
+  }
+  // checkpoint (bison)
+  for (const n of npcs) if (n.kind === 'bison' && !checkpoint &&
+      Math.abs(p.x - n.x) < 10 && Math.abs(p.y - n.y) < 20) {
+    checkpoint = { x: n.x, y: n.y }; toast = 'CHECKPOINT!'; toastT = 90;
+  }
+  // gate
+  if (gate && p.x + 8 > gate.x - 2 && p.x < gate.x + 14 && p.y > gate.y - 44 && p.y < gate.y + 8) {
+    state = 'clear'; stateT = 0;
+    SAVE.unlocked = Math.min(Math.max(SAVE.unlocked, curLevel + 2), 5); persist();
+  }
+}
 function updatePlayer() {
   const p = player;
   if (p.dead > 0) { // death hop animation
@@ -575,8 +704,42 @@ function updatePlayer() {
     if (p.dead === 50) startFade(() => { resetLevel(true); });
     return;
   }
-  // horizontal
   const dir = (IN.r ? 1 : 0) - (IN.l ? 1 : 0);
+
+  // grab a trunk: press up (or down in air), or catch one while falling
+  if (!p.climbing && trunkOverlap(p) &&
+      (IN.u || (IN.d && !p.grounded) || (!p.grounded && p.vy > 1.2))) {
+    p.climbing = true; snapToTrunk(p);
+    p.vx = 0; p.vy = 0; p.buffer = 0; p.coyote = 0; p.jumping = false;
+  }
+
+  let climbJumped = false;
+  if (p.climbing) {
+    const cs = legendLevel() >= 2 ? TUNING.climbFast : TUNING.climb;
+    if (dir) p.face = dir;
+    p.vx = dir * TUNING.climbSide;
+    p.vy = (IN.d ? cs : 0) - (IN.u ? cs : 0);
+    if (aPressed) { // leap off
+      p.climbing = false; climbJumped = true;
+      p.vy = -jumpV0() * 0.85;
+      p.vx = dir * 1.2;
+      p.jumping = true;
+    } else {
+      if (p.vx || p.vy) p.anim++;
+      const py0 = p.y;
+      collideMove(p);
+      if (p.grounded) p.climbing = false;
+      else if (!trunkOverlap(p)) {
+        if (p.vy < 0 && !p.vx) { p.y = py0; } // ladder-style stop at trunk top
+        else p.climbing = false;              // stepped off sideways or below base
+      }
+      if (p.invuln > 0) p.invuln--;
+      checkPickups(p);
+      return;
+    }
+  }
+
+  // horizontal
   const max = IN.b ? TUNING.run : TUNING.walk;
   if (dir !== 0) {
     p.face = dir;
@@ -588,7 +751,7 @@ function updatePlayer() {
     else if (p.vx < 0) p.vx = Math.min(0, p.vx + TUNING.dec);
   }
   // jump: buffer + coyote
-  if (aPressed) p.buffer = TUNING.buffer;
+  if (aPressed && !climbJumped) p.buffer = TUNING.buffer;
   else if (p.buffer > 0) p.buffer--;
   if (p.grounded) p.coyote = TUNING.coyote; else if (p.coyote > 0) p.coyote--;
   if (p.buffer > 0 && (p.grounded || p.coyote > 0)) {
@@ -607,33 +770,13 @@ function updatePlayer() {
   if (p.grounded) p.jumping = false;
   if (p.invuln > 0) p.invuln--;
   p.anim++;
-
-  // fell into pit
-  if (p.y > LEVEL_H + 24) { killPlayer(true); }
-
-  // relics
-  for (const rl of relics) {
-    if (rl.taken) continue;
-    if (p.x + HB.x < rl.x + 8 && p.x + HB.x + HB.w > rl.x && p.y + HB.y < rl.y + 6 && p.y + HB.y + HB.h > rl.y) {
-      rl.taken = true; SAVE.shards[0][rl.id] = 1; persist();
-      const tot = totalShards();
-      if (tot % 3 === 0) { state = 'levelup'; stateT = 0; }
-      else { toast = 'RELIC SHARD ' + tot + '/15'; toastT = 90; }
-    }
-  }
-  // checkpoint
-  for (const n of npcs) if (n.kind === 'bison' && !checkpoint && p.x > n.x) {
-    checkpoint = { x: n.x, y: n.y }; toast = 'CHECKPOINT!'; toastT = 90;
-  }
-  // gate
-  if (gate && p.x + 8 > gate.x - 2 && p.x < gate.x + 14 && p.y > gate.y - 44) {
-    state = 'clear'; stateT = 0; SAVE.unlocked = Math.max(SAVE.unlocked, 2); persist();
-  }
+  checkPickups(p);
 }
 
 function hurtPlayer(fromX) {
   const p = player;
   if (p.invuln > 0 || p.dead > 0) return;
+  p.climbing = false;
   p.hearts--; flashInv = 3;
   if (p.hearts <= 0) { killPlayer(false); return; }
   p.invuln = TUNING.invuln;
@@ -678,6 +821,15 @@ function updateEnemies() {
     const nx = pl.baseX + Math.sin(pl.t * 0.025) * 22;
     pl.dx = nx - pl.x; pl.x = nx;
   }
+  for (const wp of peckers) {
+    wp.t++;
+    wp.y += wp.dir * 0.5;
+    if (wp.y <= wp.minY) { wp.y = wp.minY; wp.dir = 1; }
+    if (wp.y >= wp.maxY) { wp.y = wp.maxY; wp.dir = -1; }
+    const p = player;
+    if (p.dead === 0 && p.x + HB.x < wp.x + 7 && p.x + HB.x + HB.w > wp.x + 1 &&
+        p.y + HB.y < wp.y + 6 && p.y + HB.y + HB.h > wp.y + 1) hurtPlayer(wp.x + 4);
+  }
 }
 
 // ---------- Camera ----------
@@ -688,8 +840,10 @@ function updateCamera() {
   const tx = Math.max(0, Math.min(p.x - bias, LEVEL_W() - W));
   camX += (tx - camX) * 0.12;
   if (Math.abs(tx - camX) < 0.3) camX = tx;
-  if (p.grounded || p.dead) camYT = Math.max(0, Math.min(p.y - 92, LEVEL_H - H));
-  camY += (camYT - camY) * 0.1;
+  if (p.grounded || p.dead || p.climbing) camYT = Math.max(0, Math.min(p.y - 92, LEVEL_H() - H));
+  // catch up if the player leaves the view vertically (long falls)
+  if (p.y - camY > 104 || p.y - camY < 16) camYT = Math.max(0, Math.min(p.y - 92, LEVEL_H() - H));
+  camY += (camYT - camY) * (Math.abs(camYT - camY) > 48 ? 0.18 : 0.1);
 }
 
 // ---------- Rendering ----------
@@ -700,12 +854,12 @@ function drawBackdrop() {
     let cx2 = ((i * 89 + 20 - camX * 0.25) % (W + 40) + W + 40) % (W + 40) - 20;
     drawSpr(SPR.cloud, cx2, 14 + (i % 3) * 11, false);
   }
-  // distant canopy silhouette, parallax .5
+  // distant canopy silhouette, parallax .5 (anchored near each level's floor)
+  const cb = 90 + Math.floor((LEVEL_H() - 192 - camY) * 0.3);
   for (let sx = 0; sx < W; sx++) {
     const wx = Math.floor(sx + camX * 0.5);
     const bump = ((wx >> 3) * 29 % 7) + ((wx >> 2) * 13 % 3);
-    const top = 90 - Math.floor(camY * 0.3) + bump;
-    for (let yy = Math.max(0, top); yy < Math.min(H, 118 - Math.floor(camY * 0.3)); yy++) FB[yy * W + sx] = 1;
+    for (let yy = Math.max(0, cb + bump); yy < Math.min(H, cb + 28); yy++) FB[yy * W + sx] = 1;
   }
 }
 function drawTiles() {
@@ -717,6 +871,7 @@ function drawTiles() {
     const sx = c * TS - Math.round(camX), sy = r * TS - Math.round(camY);
     if (t === 1) drawSpr(tileAt(c, r - 1) === 1 ? SPR.tDirt : SPR.tGrass, sx, sy);
     else if (t === 2) drawSpr(SPR.tBranch, sx, sy);
+    else if (t === 3) drawSpr(SPR.tTrunk, sx, sy);
   }
 }
 function drawGate() {
@@ -737,7 +892,9 @@ function drawEntities() {
   const ox = -Math.round(camX), oy = -Math.round(camY);
   for (const pl of platforms) drawSpr(SPR.mplat, pl.x + ox, pl.y + oy);
   for (const rl of relics) if (!rl.taken) drawSpr(SPR.relic[(frame >> 4) & 1], rl.x + ox, rl.y + oy);
-  for (const n of npcs) drawSpr(n.kind === 'bison' ? SPR.bison : SPR.panda, n.x + ox, n.y + oy, n.kind === 'panda');
+  const NSPR = { bison: SPR.bison, panda: SPR.panda, empy: SPR.empy };
+  for (const n of npcs) drawSpr(NSPR[n.kind], n.x + ox, n.y + oy, n.kind !== 'bison');
+  for (const wp of peckers) drawSpr(SPR.pecker[(wp.t >> 4) & 1], wp.x + ox, wp.y + oy, wp.t % 128 > 64);
   for (const pl of plants) {
     const open = pl.t >= 80;
     const jit = (!open && pl.t > 68) ? ((pl.t >> 1) & 1) : 0;
@@ -748,7 +905,8 @@ function drawEntities() {
   const p = player;
   if (!(p.invuln > 0 && (frame & 3) < 2)) {
     let spr = SPR.lemurIdle;
-    if (!p.grounded) spr = SPR.lemurJump;
+    if (p.climbing) spr = ((p.anim >> 3) & 1) ? SPR.lemurWalk : SPR.lemurJump;
+    else if (!p.grounded) spr = SPR.lemurJump;
     else if (Math.abs(p.vx) > 0.1) spr = ((p.anim >> 3) & 1) ? SPR.lemurWalk : SPR.lemurIdle;
     drawSpr(spr, Math.round(p.x) + ox, Math.round(p.y) + oy, p.face < 0);
   }
@@ -776,10 +934,22 @@ const QUIPS = {
   panda: ['PATIENT PANDA:', 'WAITING IS THE HARDEST PART.'],
   bison: ['BRAVE BISON:', "WE'RE BORN TO BE BRAVE!"],
 };
+function empyLines() {
+  const left = relics.filter(r => !r.taken);
+  if (!left.length) return ['EMPY: MY EARS ARE CALM.', 'YOU FOUND EVERY SHARD HERE!'];
+  let best = left[0], bd = 1e9;
+  for (const r of left) {
+    const d = Math.abs(r.x - player.x) + Math.abs(r.y - player.y);
+    if (d < bd) { bd = d; best = r; }
+  }
+  const dx = best.x - player.x, dy = best.y - player.y;
+  const dirTxt = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'WEST' : 'EAST') : (dy < 0 ? 'UP HIGH' : 'DOWN LOW');
+  return ['EMPY: MY EARS TINGLE...', 'SOMETHING SPARKLES ' + dirTxt + '!'];
+}
 function drawNpcQuips() {
   for (const n of npcs) {
     if (Math.abs(player.x - n.x) < 26 && Math.abs(player.y - n.y) < 24) {
-      drawTextbox(QUIPS[n.kind]); return;
+      drawTextbox(n.kind === 'empy' ? empyLines() : QUIPS[n.kind]); return;
     }
   }
 }
@@ -820,7 +990,30 @@ function drawTitle() {
 }
 
 // ---------- Game states & loop ----------
-let state = 'title', stateT = 0, frame = 0;
+let state = 'title', stateT = 0, frame = 0, selIdx = 0;
+function drawSelect() {
+  clearFB(0);
+  fbRect(8, 6, 144, 132, 0);
+  fbRect(8, 6, 144, 2, 3); fbRect(8, 136, 144, 2, 3); fbRect(8, 6, 2, 132, 3); fbRect(150, 6, 2, 132, 3);
+  drawTextC('SELECT LEVEL', 14, 3);
+  fbRect(24, 22, 112, 1, 2);
+  for (let i = 0; i < 5; i++) {
+    const y = 32 + i * 16;
+    const exists = i < LEVELS.length;
+    const open = exists && i < SAVE.unlocked;
+    const name = exists ? LEVELS[i].name : '- - - - - -';
+    drawText((i + 1) + '.', 20, y, open ? 3 : 1);
+    drawText(open ? name : (exists ? 'LOCKED' : name), 34, y, open ? 3 : 1);
+    if (open) {
+      const got = SAVE.shards[i].reduce((a, b) => a + b, 0);
+      drawSpr(SPR.relic[0], 126, y - 1);
+      drawText(got + '/3', 135, y, got === 3 ? 3 : 2);
+    }
+    if (i === selIdx) drawText('>', 13, y, 3);
+  }
+  drawTextC('LV' + legendLevel() + '  ' + totalShards() + '/15 SHARDS', 118, 2);
+  if ((frame >> 5) & 1) drawTextC('PRESS START', 128, 3);
+}
 let toast = '', toastT = 0;
 let fadeCb = null, fadeDir = 0;
 function startFade(cb) { fadeDir = 1; fadeCb = cb; }
@@ -839,14 +1032,23 @@ function step() {
   if (state === 'title') {
     drawTitle();
     if ((startPressed || aPressed) && fadeDir === 0) {
-      startFade(() => { checkpoint = null; resetLevel(false); state = 'intro'; stateT = 0; });
+      startFade(() => { state = 'select'; selIdx = Math.min(SAVE.unlocked, LEVELS.length) - 1; });
+    }
+  }
+  else if (state === 'select') {
+    drawSelect();
+    const avail = Math.min(SAVE.unlocked, LEVELS.length);
+    if (uPressed) selIdx = (selIdx + avail - 1) % avail;
+    if (dPressed) selIdx = (selIdx + 1) % avail;
+    if ((startPressed || aPressed) && fadeDir === 0) {
+      startFade(() => { loadLevel(selIdx); resetLevel(false); state = 'intro'; stateT = 0; });
     }
   }
   else if (state === 'intro') {
     stateT++;
     renderWorld();
     fbRect(20, 60, 120, 20, 0); fbRect(20, 60, 120, 1, 3); fbRect(20, 79, 120, 1, 3);
-    drawTextC('LEVEL 1', 63, 3); drawTextC('JUNGLE CANOPY', 71, 3);
+    drawTextC('LEVEL ' + (curLevel + 1), 63, 3); drawTextC(LEVELS[curLevel].name, 71, 3);
     if (stateT > 100 || startPressed || aPressed) state = 'play';
   }
   else if (state === 'play') {
@@ -879,12 +1081,14 @@ function step() {
   else if (state === 'clear') {
     stateT++;
     renderWorld();
+    const hasNext = curLevel + 1 < LEVELS.length;
     fbRect(16, 52, 128, 36, 0);
     fbRect(16, 52, 128, 2, 3); fbRect(16, 86, 128, 2, 3); fbRect(16, 52, 2, 36, 3); fbRect(142, 52, 2, 36, 3);
     drawTextC('LEVEL CLEAR!', 58, 3, 2);
-    drawTextC('MORE LEVELS COMING SOON', 76, 2);
-    if (stateT > 90 && (aPressed || startPressed)) {
-      startFade(() => { state = 'title'; });
+    drawTextC(hasNext ? 'PRESS START TO GO ON' : 'MORE LEVELS COMING SOON', 76, 2);
+    if (stateT > 90 && (aPressed || startPressed) && fadeDir === 0) {
+      if (hasNext) startFade(() => { loadLevel(curLevel + 1); resetLevel(false); state = 'intro'; stateT = 0; });
+      else startFade(() => { state = 'title'; });
     }
   }
   blit();
@@ -921,8 +1125,12 @@ function fit() {
 }
 addEventListener('resize', fit);
 fit();
-// debug: open index.html#play to skip the title screen
-if (location.hash === '#play') { checkpoint = null; resetLevel(false); state = 'play'; }
+// debug: open index.html#play (or #play2 etc.) to skip straight into a level
+const dbg = location.hash.match(/^#play(\d*)$/);
+if (dbg) {
+  const lv = Math.min(dbg[1] ? +dbg[1] - 1 : 0, LEVELS.length - 1);
+  loadLevel(lv); resetLevel(false); state = 'play';
+}
 </script>
 </body>
 </html>
