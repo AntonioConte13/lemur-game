@@ -569,6 +569,20 @@ function loadSave() {
 }
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) {} }
 SAVE = loadSave();
+// ---------- Diagnostic recorder (local VPS play only; no-op on GitHub Pages) ----------
+const REC = { ev: [], last: '' };
+function recEvent(type, data) {
+  REC.ev.push(Object.assign({ f: frame, t: type }, data));
+  if (REC.ev.length > 6000) REC.ev.splice(0, 2000);
+}
+function flushRec(outcome) {
+  try {
+    if (location.protocol !== 'http:' || !REC.ev.length) { REC.ev = []; return; }
+    fetch('/log', { method: 'POST', body: JSON.stringify(
+      { v: 1, lvl: curLevel + 1, outcome, at: Date.now(), shards: totalShards(), ev: REC.ev }) });
+  } catch (e) {}
+  REC.ev = [];
+}
 function totalShards() { return SAVE.shards.flat().reduce((a, b) => a + b, 0); }
 function legendLevel() { return Math.floor(totalShards() / 3); }
 const UPGRADES = ['HIGHER JUMP', 'FASTER CLIMB', 'LONGER SWING', 'LEGEND DASH', 'TRUE LEGEND'];
@@ -772,6 +786,7 @@ function resetLevel(fromCheckpoint) {
   camX = Math.max(0, Math.min(player.x - 60, LEVEL_W() - W));
   camYT = Math.max(0, Math.min(player.y - 92, LEVEL_H() - H));
   camY = camYT;
+  recEvent('spawn', { lvl: curLevel + 1, x: Math.round(player.x), y: Math.round(player.y), cp: !!(fromCheckpoint && checkpoint) });
 }
 function jumpV0() { return TUNING.jumpV0 + (legendLevel() >= 1 ? TUNING.jumpV0Up : 0); }
 
@@ -862,6 +877,7 @@ function checkPickups(p) {
   if (gate && p.x + 8 > gate.x - 2 && p.x < gate.x + 14 && p.y > gate.y - 44 && p.y < gate.y + 8) {
     state = 'clear'; stateT = 0;
     SAVE.unlocked = Math.min(Math.max(SAVE.unlocked, curLevel + 2), 5); persist();
+    flushRec('clear');
   }
 }
 function updatePlayer() {
@@ -891,6 +907,7 @@ function updatePlayer() {
       const boost = legendLevel() >= 3 ? 1.35 : 1.0;
       p.vx = Math.max(-3, Math.min(3, v.om * v.len * Math.cos(v.th) * boost));
       p.vy = Math.max(-3.8, -v.om * v.len * Math.sin(v.th) * boost - 1.3);
+      recEvent('rel', { th: +v.th.toFixed(2), om: +v.om.toFixed(3), vx: +p.vx.toFixed(2), vy: +p.vy.toFixed(2), x: Math.round(p.x), y: Math.round(p.y) });
       p.swing = null; p.swingT = 18; p.jumping = true; climbJumped = true;
     } else {
       if (p.invuln > 0) p.invuln--;
@@ -971,6 +988,7 @@ function updatePlayer() {
         // carry momentum into the swing
         v.om += (p.vx * Math.cos(v.th) - p.vy * Math.sin(v.th)) / v.len;
         v.om = Math.max(-0.085, Math.min(0.085, v.om));
+        recEvent('grab', { vx: Math.round(v.x), om: +v.om.toFixed(3), x: Math.round(p.x), y: Math.round(p.y) });
         p.vx = 0; p.vy = 0; p.jumping = false; p.buffer = 0;
         break;
       }
@@ -995,6 +1013,8 @@ function killPlayer(pit) {
   const p = player;
   if (p.dead > 0) return;
   p.dead = 1; p.vy = pit ? 1 : -3; p.vx = 0; flashInv = 4;
+  recEvent('death', { pit: !!pit, x: Math.round(p.x), y: Math.round(p.y) });
+  flushRec('death');
 }
 
 function updateEnemies() {
@@ -1070,7 +1090,7 @@ function updateRacer() {
   racer.x = nx; racer.y = ny; racer.anim++;
   if (racer.seg >= path.length - 1) {
     racer.done = true;
-    if (state === 'play') { state = 'lost'; stateT = 0; }
+    if (state === 'play') { state = 'lost'; stateT = 0; flushRec('lost'); }
   }
 }
 
@@ -1332,6 +1352,11 @@ function step() {
       updateRacer();
       updatePlayer();
       updateCamera();
+      // diagnostic trace: input edges + position samples
+      const bits = (IN.l?'L':'')+(IN.r?'R':'')+(IN.u?'U':'')+(IN.d?'D':'')+(IN.a?'A':'')+(IN.b?'B':'');
+      if (bits !== REC.last) { REC.last = bits; recEvent('in', { s: bits }); }
+      if (frame % 10 === 0) recEvent('p', { x: Math.round(player.x), y: Math.round(player.y),
+        st: player.swing ? 'S' : player.climbing ? 'C' : player.grounded ? 'G' : 'A' });
     }
     renderWorld();
     drawNpcQuips();
