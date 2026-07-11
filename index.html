@@ -101,10 +101,14 @@ const cv = document.getElementById('screen'), ctx = cv.getContext('2d');
 const img = ctx.createImageData(W, H);
 const px32 = new Uint32Array(img.data.buffer);
 const FB = new Uint8Array(W * H);
-const PAL32 = PAL_HEX.map(h => {
-  const n = parseInt(h.slice(1), 16);
-  return (0xff000000 | ((n & 0xff) << 16) | (n & 0xff00) | (n >> 16)) >>> 0;
-});
+let PAL32;
+function setPal(hexes) {
+  PAL32 = hexes.map(h => {
+    const n = parseInt(h.slice(1), 16);
+    return (0xff000000 | ((n & 0xff) << 16) | (n & 0xff00) | (n >> 16)) >>> 0;
+  });
+}
+setPal(PAL_HEX);
 let fade = 0;        // 0..4 : shift all indices toward lightest (4 = blank)
 let flashInv = 0;    // frames of inverted palette (damage flash)
 
@@ -363,6 +367,57 @@ SPR.empy = S([
 "..333333333333..",
 "...33......33...",
 "................"]);
+SPR.wizard = S([
+".......33.......",
+"......3113......",
+".....311113.....",
+"....31111113....",
+"...3333333333...",
+"....30000003....",
+"....30300303....",
+"....30000003....",
+"....30000003....",
+".....300003.....",
+"....33333333....",
+"...3111111113...",
+"...3111111113...",
+"...3111111113...",
+"...3113..3113...",
+"................"]);
+SPR.cat = S([
+"..33......33....",
+"..3133333313....",
+"..3111111113....",
+"..3133113313....",
+"..3111111113....",
+"..3111331113....",
+"..3131111313....",
+"...33333333.....",
+"...311111113....",
+"...311111113....",
+"...311111113....",
+"...31111111333..",
+"...333333333..33",
+"....33...33.....",
+"....33...33.....",
+"................"]);
+SPR.sign = S([
+"................",
+"................",
+".33333333333....",
+".30000300003....",
+".30000330003....",
+".30000300003....",
+".33333333333....",
+".....22.........",
+".....22.........",
+".....22.........",
+".....22.........",
+".....22.........",
+".....22.........",
+".....22.........",
+".....22.........",
+"................"]);
 SPR.pecker = [S([
 "..33....",
 ".3223...",
@@ -543,9 +598,51 @@ function buildL2() { // THE GREAT TRUNKS - vertical climb, 40x72 tiles
   set(gr, 24, 13, 'E');
   return gr.map(r => r.join(''));
 }
+function buildL3() { // FROWNING FOREST - vine swinging, 220x24 tiles
+  const CH = [
+    chunk(20, { 19: '...S......n', 20: g(20), 21: g(20), 22: g(20), 23: g(20) }),
+    // vine teaching: first over ground, second over a pit
+    chunk(26, { 8: '........v........v',
+      20: '##############........####', 21: '##############........####',
+      22: '##############........####', 23: '##############........####' }),
+    // pits with vines, then a two-vine hop
+    chunk(36, { 7: '........v...............v....v',
+      20: '####..........######.............###', 21: '####..........######.............###',
+      22: '####..........######.............###', 23: '####..........######.............###' }),
+    // the lying signpost fork: marked low gauntlet vs unmarked high road
+    chunk(40, { 13: '..................r', 14: '...............................k',
+      15: '........#######################',
+      16: '........#######################',
+      17: '......##', 18: '......##',
+      19: '...s........p.......p',
+      20: '##########################..############',
+      21: '##########################..############',
+      22: '##########################..############',
+      23: '##########################..############' }),
+    chunk(12, { 19: '.....c', 20: g(12), 21: g(12), 22: g(12), 23: g(12) }),
+    // the long swing: five-vine chain over one pit, low shard mid-chain
+    chunk(44, { 6: '........v......v......v......v......v',
+      14: '.........................r',
+      20: '####....................................####',
+      21: '####....................................####',
+      22: '####....................................####',
+      23: '####....................................####' }),
+    // breather + climb-tower shard
+    chunk(24, { 6: '....v', 7: '.................r', 8: '................===',
+      12: '............===', 16: '........##', 17: '........##',
+      18: '........##', 19: '........##',
+      20: g(24), 21: g(24), 22: g(24), 23: g(24) }),
+    chunk(18, { 19: '........E', 20: g(18), 21: g(18), 22: g(18), 23: g(18) }),
+  ];
+  const rows = [];
+  for (let r = 0; r < 24; r++) rows.push(CH.map(c => c[r]).join(''));
+  return rows;
+}
+const PAL_FOREST = ['#c4bda8', '#7d756a', '#49443d', '#171713'];
 const LEVELS = [
-  { name: 'JUNGLE CANOPY',    build: buildL1, npc: { n: 'panda', c: 'bison' } },
-  { name: 'THE GREAT TRUNKS', build: buildL2, npc: { n: 'empy',  c: 'bison' } },
+  { name: 'JUNGLE CANOPY',    build: buildL1, npc: { n: 'panda',  c: 'bison' } },
+  { name: 'THE GREAT TRUNKS', build: buildL2, npc: { n: 'empy',   c: 'bison' } },
+  { name: 'FROWNING FOREST',  build: buildL3, npc: { n: 'wizard', c: 'bison' }, pal: PAL_FOREST },
 ];
 let MAP, MAPW, MAPH = 24, markers, curLevel = 0;
 function loadLevel(i) {
@@ -562,6 +659,7 @@ function loadLevel(i) {
     else if (ch !== '.') markers.push({ ch, c, r });
   }
   checkpoint = null;
+  setPal(LEVELS[i].pal || PAL_HEX);
 }
 const LEVEL_W = () => MAPW * TS, LEVEL_H = () => MAPH * TS;
 function tileAt(cx, cy) {
@@ -571,10 +669,10 @@ function tileAt(cx, cy) {
 }
 
 // ---------- Entities ----------
-let player, beetles, plants, relics, npcs, platforms, peckers, gate, checkpoint, spawnPt;
+let player, beetles, plants, relics, npcs, platforms, peckers, vines, signs, gate, checkpoint, spawnPt;
 loadLevel(0);
 function resetLevel(fromCheckpoint) {
-  beetles = []; plants = []; relics = []; npcs = []; platforms = []; peckers = []; gate = null;
+  beetles = []; plants = []; relics = []; npcs = []; platforms = []; peckers = []; vines = []; signs = []; gate = null;
   const nmap = LEVELS[curLevel].npc;
   const shardMarks = markers.filter(m => m.ch === 'r').sort((a, b) => a.c - b.c);
   for (const m of markers) {
@@ -586,6 +684,9 @@ function resetLevel(fromCheckpoint) {
     else if (m.ch === 'c') npcs.push({ kind: nmap.c, x: x - 4, y: y - 8 });
     else if (m.ch === 'n') npcs.push({ kind: nmap.n, x: x - 4, y: y - 8 });
     else if (m.ch === 'E') gate = { x, y: y + 8 };
+    else if (m.ch === 'v') vines.push({ x: x + 4, y: y + 2, len: 40, th: 0.12, om: 0 });
+    else if (m.ch === 's') signs.push({ x: x - 4, y: y - 8 });
+    else if (m.ch === 'k') npcs.push({ kind: 'cat', x: x - 4, y: y - 8 });
     else if (m.ch === 'w') {
       const cL = (tileAt(m.c - 1, m.r) === 3) ? m.c - 1 : m.c;
       let top = m.r, bot = m.r;
@@ -600,7 +701,7 @@ function resetLevel(fromCheckpoint) {
   player = {
     x: sp.x, y: sp.y, vx: 0, vy: 0, face: 1, grounded: false, climbing: false,
     coyote: 0, buffer: 0, jumping: false, anim: 0, hearts: 3, invuln: 0,
-    dead: 0, onPlat: null,
+    dead: 0, onPlat: null, swing: null, swingT: 0,
   };
   camX = Math.max(0, Math.min(player.x - 60, LEVEL_W() - W));
   camYT = Math.max(0, Math.min(player.y - 92, LEVEL_H() - H));
@@ -705,6 +806,32 @@ function updatePlayer() {
     return;
   }
   const dir = (IN.r ? 1 : 0) - (IN.l ? 1 : 0);
+  if (p.swingT > 0) p.swingT--;
+
+  // vine swinging
+  let climbJumped = false;
+  if (p.swing) {
+    const v = p.swing;
+    if (dir) { v.om += dir * 0.0007; p.face = dir; }
+    v.om += -(0.22 / v.len) * Math.sin(v.th);
+    v.om *= 0.9965;
+    v.om = Math.max(-0.085, Math.min(0.085, v.om));
+    v.th += v.om;
+    v.th = Math.max(-1.4, Math.min(1.4, v.th));
+    p.x = v.x + Math.sin(v.th) * v.len - 8;
+    p.y = v.y + Math.cos(v.th) * v.len - 9;
+    p.vx = 0; p.vy = 0; p.anim++;
+    if (aPressed) { // release with momentum
+      const boost = legendLevel() >= 3 ? 1.35 : 1.0;
+      p.vx = Math.max(-3, Math.min(3, v.om * v.len * Math.cos(v.th) * boost));
+      p.vy = Math.max(-3.8, -v.om * v.len * Math.sin(v.th) * boost - 1.3);
+      p.swing = null; p.swingT = 18; p.jumping = true; climbJumped = true;
+    } else {
+      if (p.invuln > 0) p.invuln--;
+      checkPickups(p);
+      return;
+    }
+  }
 
   // grab a trunk: press up (or down in air), or catch one while falling
   if (!p.climbing && trunkOverlap(p) &&
@@ -713,7 +840,6 @@ function updatePlayer() {
     p.vx = 0; p.vy = 0; p.buffer = 0; p.coyote = 0; p.jumping = false;
   }
 
-  let climbJumped = false;
   if (p.climbing) {
     const cs = legendLevel() >= 2 ? TUNING.climbFast : TUNING.climb;
     if (dir) p.face = dir;
@@ -768,6 +894,22 @@ function updatePlayer() {
   if (p.onPlat) p.x += p.onPlat.dx;
   collideMove(p);
   if (p.grounded) p.jumping = false;
+  // catch a vine (airborne, near its end)
+  if (!p.grounded && !p.swing && p.swingT === 0 && !p.climbing) {
+    const r = legendLevel() >= 3 ? 15 : 11;
+    const pcx = p.x + 8, pcy = p.y + 9;
+    for (const v of vines) {
+      const bx = v.x + Math.sin(v.th) * v.len, by = v.y + Math.cos(v.th) * v.len;
+      if (Math.abs(pcx - bx) < r && Math.abs(pcy - by) < r + 3) {
+        p.swing = v;
+        // carry momentum into the swing
+        v.om += (p.vx * Math.cos(v.th) - p.vy * Math.sin(v.th)) / v.len;
+        v.om = Math.max(-0.085, Math.min(0.085, v.om));
+        p.vx = 0; p.vy = 0; p.jumping = false; p.buffer = 0;
+        break;
+      }
+    }
+  }
   if (p.invuln > 0) p.invuln--;
   p.anim++;
   checkPickups(p);
@@ -777,6 +919,7 @@ function hurtPlayer(fromX) {
   const p = player;
   if (p.invuln > 0 || p.dead > 0) return;
   p.climbing = false;
+  if (p.swing) { p.swing = null; p.swingT = 30; }
   p.hearts--; flashInv = 3;
   if (p.hearts <= 0) { killPlayer(false); return; }
   p.invuln = TUNING.invuln;
@@ -820,6 +963,14 @@ function updateEnemies() {
     pl.t++;
     const nx = pl.baseX + Math.sin(pl.t * 0.025) * 22;
     pl.dx = nx - pl.x; pl.x = nx;
+  }
+  // free vines keep swaying and settle down
+  for (const v of vines) {
+    if (player && player.swing === v) continue;
+    v.om += -(0.22 / v.len) * Math.sin(v.th);
+    v.om += Math.sin((frame + v.x) * 0.013) * 0.00003;
+    v.om *= 0.996;
+    v.th += v.om;
   }
   for (const wp of peckers) {
     wp.t++;
@@ -888,11 +1039,24 @@ function drawGate() {
   fbRect(x + 4, gy - 14, 8, 14, 3);
   drawText('GOAL', x - 1, gy - 26, 0);
 }
+function drawVine(v, ox, oy) {
+  const n = Math.floor(v.len / 3);
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const x = Math.round(v.x + Math.sin(v.th) * v.len * t) + ox;
+    const y = Math.round(v.y + Math.cos(v.th) * v.len * t) + oy;
+    fbRect(x, y, 2, 2, 3);
+    if (i % 3 === 1) fbRect(x + (i % 2 ? 2 : -1), y, 1, 2, 1); // leaf flecks
+  }
+  fbRect(Math.round(v.x) + ox - 2, Math.round(v.y) + oy - 2, 6, 3, 3); // knot
+}
 function drawEntities() {
   const ox = -Math.round(camX), oy = -Math.round(camY);
+  for (const s of signs) drawSpr(SPR.sign, s.x + ox, s.y + oy);
+  for (const v of vines) drawVine(v, ox, oy);
   for (const pl of platforms) drawSpr(SPR.mplat, pl.x + ox, pl.y + oy);
   for (const rl of relics) if (!rl.taken) drawSpr(SPR.relic[(frame >> 4) & 1], rl.x + ox, rl.y + oy);
-  const NSPR = { bison: SPR.bison, panda: SPR.panda, empy: SPR.empy };
+  const NSPR = { bison: SPR.bison, panda: SPR.panda, empy: SPR.empy, wizard: SPR.wizard, cat: SPR.cat };
   for (const n of npcs) drawSpr(NSPR[n.kind], n.x + ox, n.y + oy, n.kind !== 'bison');
   for (const wp of peckers) drawSpr(SPR.pecker[(wp.t >> 4) & 1], wp.x + ox, wp.y + oy, wp.t % 128 > 64);
   for (const pl of plants) {
@@ -905,7 +1069,8 @@ function drawEntities() {
   const p = player;
   if (!(p.invuln > 0 && (frame & 3) < 2)) {
     let spr = SPR.lemurIdle;
-    if (p.climbing) spr = ((p.anim >> 3) & 1) ? SPR.lemurWalk : SPR.lemurJump;
+    if (p.swing) spr = SPR.lemurJump;
+    else if (p.climbing) spr = ((p.anim >> 3) & 1) ? SPR.lemurWalk : SPR.lemurJump;
     else if (!p.grounded) spr = SPR.lemurJump;
     else if (Math.abs(p.vx) > 0.1) spr = ((p.anim >> 3) & 1) ? SPR.lemurWalk : SPR.lemurIdle;
     drawSpr(spr, Math.round(p.x) + ox, Math.round(p.y) + oy, p.face < 0);
@@ -933,6 +1098,8 @@ function drawTextbox(lines) {
 const QUIPS = {
   panda: ['PATIENT PANDA:', 'WAITING IS THE HARDEST PART.'],
   bison: ['BRAVE BISON:', "WE'RE BORN TO BE BRAVE!"],
+  wizard: ['WILLFUL WIZARD: HEED ME...', "DON'T TRUST EVERY SIGN."],
+  cat: ['CYNICAL CAT: OH, PURR-FECT.', 'ENJOY MY LITTLE GAUNTLET.'],
 };
 function empyLines() {
   const left = relics.filter(r => !r.taken);
@@ -1030,6 +1197,7 @@ function step() {
   if (toastT > 0) toastT--;
 
   if (state === 'title') {
+    setPal(PAL_HEX);
     drawTitle();
     if ((startPressed || aPressed) && fadeDir === 0) {
       startFade(() => { state = 'select'; selIdx = Math.min(SAVE.unlocked, LEVELS.length) - 1; });
