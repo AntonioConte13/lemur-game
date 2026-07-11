@@ -578,7 +578,7 @@ function recEvent(type, data) {
 function flushRec(outcome) {
   try {
     if (location.protocol !== 'http:' || !REC.ev.length) { REC.ev = []; return; }
-    fetch('/log', { method: 'POST', body: JSON.stringify(
+    fetch('/log?k=lemurboy-go7', { method: 'POST', body: JSON.stringify(
       { v: 1, lvl: curLevel + 1, outcome, at: Date.now(), shards: totalShards(), ev: REC.ev }) });
   } catch (e) {}
   REC.ev = [];
