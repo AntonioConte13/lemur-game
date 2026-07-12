@@ -693,20 +693,30 @@ function buildL4() { // CANOPY RUSH - rival race, 176x32 tiles
   return gr.map(r => r.join(''));
 }
 const PAL_FOREST = ['#c4bda8', '#7d756a', '#49443d', '#171713'];
-const L4_PATH = [
-  [40,208],[240,208],[248,206],[276,188],[304,206],[308,208],
-  [380,208],[388,180],[388,80],[400,80],[560,80],
-  [576,120],[588,208],[616,208],
-  [644,194],[660,188],[688,178],[716,188],[744,178],[772,188],[800,196],[812,208],
-  [920,208],[928,180],[928,128],[940,128],[1048,128],
-  [1072,120],[1096,110],[1122,122],[1130,128],[1216,128],
-  [1226,168],[1234,208],[1344,208],
+// The hamster's route: not positions to glide between, but goals for a
+// scripted PLAYER. run=reach x on foot; gap=run-jump at jx; climb=grab trunk
+// at cx, ascend to y<=ty, step off toward exit; vine=jump at jx, swing and
+// chain until standing at x>=tx (fy/rn: fall-below-y => retry from node rn).
+const L4_ROUTE = [
+  { t: 'run',   tx: 236 },
+  { t: 'gap',   jx: 242, tx: 296, hold: 14 },
+  { t: 'run',   tx: 378 },
+  { t: 'climb', cx: 390, ty: 76,  exit: 1 },
+  { t: 'run',   tx: 552 },
+  { t: 'run',   tx: 606 },
+  { t: 'vine',  jx: 606, tx: 814, hold: 999 },
+  { t: 'run',   tx: 914 },
+  { t: 'climb', cx: 934, ty: 126, exit: 1 },
+  { t: 'run',   tx: 1036 },
+  { t: 'vine',  jx: 1040, tx: 1130, hold: 8, brake: false, fy: 190, rn: 8 },
+  { t: 'run',   tx: 1208 },
+  { t: 'run',   tx: 1340 },
 ];
 const LEVELS = [
   { name: 'JUNGLE CANOPY',    build: buildL1, npc: { n: 'panda',  c: 'bison' } },
   { name: 'THE GREAT TRUNKS', build: buildL2, npc: { n: 'empy',   c: 'bison' } },
   { name: 'FROWNING FOREST',  build: buildL3, npc: { n: 'wizard', c: 'bison' }, pal: PAL_FOREST },
-  { name: 'CANOPY RUSH',      build: buildL4, npc: {}, bias: 72, race: L4_PATH, raceSpeed: 1.32,
+  { name: 'CANOPY RUSH',      build: buildL4, npc: {}, bias: 72, route: L4_ROUTE, finishX: 1344, racerSpd: 1.5,
     quip: ['HUSTLING HAMSTER:', 'I KEEP WINNING BECAUSE', 'I KEEP MOVING! GO!'] },
 ];
 let MAP, MAPW, MAPH = 24, markers, curLevel = 0;
@@ -750,7 +760,13 @@ function resetLevel(fromCheckpoint) {
     else if (m.ch === 'n') npcs.push({ kind: nmap.n, x: x - 4, y: y - 8 });
     else if (m.ch === 'E') gate = { x, y: y + 8 };
     else if (m.ch === 'v') vines.push({ x: x + 4, y: y + 2, len: 40, th: 0.12, om: 0 });
-    else if (m.ch === 'h') racer = { x, y: y - 8, seg: 0, d: 0, t: 0, done: false, anim: 0, face: 1 };
+    else if (m.ch === 'h') racer = {
+      x, y: y - 8, vx: 0, vy: 0, face: 1, grounded: false, climbing: false,
+      coyote: 0, buffer: 0, jumping: false, anim: 0, invuln: 0,
+      swing: null, swingT: 0, onPlat: null, spd: LEVELS[curLevel].racerSpd || 1.5,
+      node: 0, t: 0, done: false, prevA: 0, dazed: 0, hopCd: 0, hopHold: 0,
+      airT: 0, caught: false, safeX: x, safeY: y - 8, lastX: x, stuckT: 0,
+    };
     else if (m.ch === 's') signs.push({ x: x - 4, y: y - 8 });
     else if (m.ch === 'k') npcs.push({ kind: 'cat', x: x - 4, y: y - 8 });
     else if (m.ch === 'w') {
@@ -767,7 +783,7 @@ function resetLevel(fromCheckpoint) {
   player = {
     x: sp.x, y: sp.y, vx: 0, vy: 0, face: 1, grounded: false, climbing: false,
     coyote: 0, buffer: 0, jumping: false, anim: 0, hearts: 3, invuln: 0,
-    dead: 0, onPlat: null, swing: null, swingT: 0,
+    dead: 0, onPlat: null, swing: null, swingT: 0, isPlayer: true,
   };
   camX = Math.max(0, Math.min(player.x - 60, LEVEL_W() - W));
   camYT = Math.max(0, Math.min(player.y - 92, LEVEL_H() - H));
@@ -864,18 +880,16 @@ function checkPickups(p) {
     SAVE.unlocked = Math.min(Math.max(SAVE.unlocked, curLevel + 2), 5); persist();
   }
 }
-function updatePlayer() {
-  const p = player;
-  if (p.dead > 0) { // death hop animation
-    p.dead++; p.vy = Math.min(p.vy + TUNING.gravDown, TUNING.term); p.y += p.vy;
-    if (p.dead === 50) startFade(() => { resetLevel(true); });
-    return;
-  }
-  const dir = (IN.r ? 1 : 0) - (IN.l ? 1 : 0);
+// Shared movement core: the player and the racer are both "actors" driven by
+// an input set {l,r,u,d,a,b,aP} - identical physics for both.
+function moveActor(p, inp) {
+  const dir = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
+  const lg = p.isPlayer ? legendLevel() : 0;
+  const jv = p.isPlayer ? jumpV0() : TUNING.jumpV0;
   if (p.swingT > 0) p.swingT--;
+  let phase = 'free', climbJumped = false;
 
   // vine swinging
-  let climbJumped = false;
   if (p.swing) {
     const v = p.swing;
     if (dir) { v.om += dir * 0.0007; p.face = dir; }
@@ -887,97 +901,107 @@ function updatePlayer() {
     p.x = v.x + Math.sin(v.th) * v.len - 8;
     p.y = v.y + Math.cos(v.th) * v.len - 9;
     p.vx = 0; p.vy = 0; p.anim++;
-    if (aPressed) { // release with momentum
-      const boost = legendLevel() >= 3 ? 1.35 : 1.0;
+    if (inp.aP) { // release with momentum
+      const boost = lg >= 3 ? 1.35 : 1.0;
       p.vx = Math.max(-3, Math.min(3, v.om * v.len * Math.cos(v.th) * boost));
       p.vy = Math.max(-3.8, -v.om * v.len * Math.sin(v.th) * boost - 1.3);
+      v.heldBy = null;
       p.swing = null; p.swingT = 18; p.jumping = true; climbJumped = true;
-    } else {
-      if (p.invuln > 0) p.invuln--;
-      checkPickups(p);
-      return;
+    } else phase = 'swing';
+  }
+
+  if (phase === 'free') {
+    // grab a trunk: press up (or down in air), or catch one while falling
+    if (!p.climbing && trunkOverlap(p) &&
+        (inp.u || (inp.d && !p.grounded) || (inp.grab && !p.grounded && p.vy > 1.2))) {
+      p.climbing = true; snapToTrunk(p);
+      p.vx = 0; p.vy = 0; p.buffer = 0; p.coyote = 0; p.jumping = false;
     }
-  }
-
-  // grab a trunk: press up (or down in air), or catch one while falling
-  if (!p.climbing && trunkOverlap(p) &&
-      (IN.u || (IN.d && !p.grounded) || (!p.grounded && p.vy > 1.2))) {
-    p.climbing = true; snapToTrunk(p);
-    p.vx = 0; p.vy = 0; p.buffer = 0; p.coyote = 0; p.jumping = false;
-  }
-
-  if (p.climbing) {
-    const cs = legendLevel() >= 2 ? TUNING.climbFast : TUNING.climb;
-    if (dir) p.face = dir;
-    p.vx = dir * TUNING.climbSide;
-    p.vy = (IN.d ? cs : 0) - (IN.u ? cs : 0);
-    if (aPressed) { // leap off
-      p.climbing = false; climbJumped = true;
-      p.vy = -jumpV0() * 0.85;
-      p.vx = dir * 1.2;
-      p.jumping = true;
-    } else {
-      if (p.vx || p.vy) p.anim++;
-      const py0 = p.y;
-      collideMove(p);
-      if (p.grounded) p.climbing = false;
-      else if (!trunkOverlap(p)) {
-        if (p.vy < 0 && !p.vx) { p.y = py0; } // ladder-style stop at trunk top
-        else p.climbing = false;              // stepped off sideways or below base
-      }
-      if (p.invuln > 0) p.invuln--;
-      checkPickups(p);
-      return;
-    }
-  }
-
-  // horizontal
-  const max = IN.b ? TUNING.run : TUNING.walk;
-  if (dir !== 0) {
-    p.face = dir;
-    const a = (dir * p.vx < 0) ? TUNING.skid : TUNING.acc;
-    p.vx += dir * a;
-    if (Math.abs(p.vx) > max && dir * p.vx > 0) p.vx = dir * Math.max(Math.abs(p.vx) - TUNING.dec, max);
-  } else {
-    if (p.vx > 0) p.vx = Math.max(0, p.vx - TUNING.dec);
-    else if (p.vx < 0) p.vx = Math.min(0, p.vx + TUNING.dec);
-  }
-  // jump: buffer + coyote
-  if (aPressed && !climbJumped) p.buffer = TUNING.buffer;
-  else if (p.buffer > 0) p.buffer--;
-  if (p.grounded) p.coyote = TUNING.coyote; else if (p.coyote > 0) p.coyote--;
-  if (p.buffer > 0 && (p.grounded || p.coyote > 0)) {
-    p.vy = -jumpV0(); p.grounded = false; p.coyote = 0; p.buffer = 0; p.jumping = true;
-  }
-  // variable height: release clamp
-  if (!IN.a && p.vy < -TUNING.minJump) p.vy = -TUNING.minJump;
-  // gravity with apex hang
-  let grav = (p.vy < 0 && IN.a) ? TUNING.gravUp : TUNING.gravDown;
-  if (!p.grounded && IN.a && Math.abs(p.vy) < TUNING.apexBand) grav *= TUNING.apexMul;
-  p.vy = Math.min(p.vy + grav, TUNING.term);
-
-  // ride platform before own movement
-  if (p.onPlat) p.x += p.onPlat.dx;
-  collideMove(p);
-  if (p.grounded) p.jumping = false;
-  // catch a vine (airborne, near its end)
-  if (!p.grounded && !p.swing && p.swingT === 0 && !p.climbing) {
-    const r = legendLevel() >= 3 ? 15 : 11;
-    const pcx = p.x + 8, pcy = p.y + 9;
-    for (const v of vines) {
-      const bx = v.x + Math.sin(v.th) * v.len, by = v.y + Math.cos(v.th) * v.len;
-      if (Math.abs(pcx - bx) < r && Math.abs(pcy - by) < r + 3) {
-        p.swing = v;
-        // carry momentum into the swing
-        v.om += (p.vx * Math.cos(v.th) - p.vy * Math.sin(v.th)) / v.len;
-        v.om = Math.max(-0.085, Math.min(0.085, v.om));
-        p.vx = 0; p.vy = 0; p.jumping = false; p.buffer = 0;
-        break;
+    if (p.climbing) {
+      const cs = lg >= 2 ? TUNING.climbFast : TUNING.climb;
+      if (dir) p.face = dir;
+      p.vx = dir * TUNING.climbSide;
+      p.vy = (inp.d ? cs : 0) - (inp.u ? cs : 0);
+      if (inp.aP) { // leap off
+        p.climbing = false; climbJumped = true;
+        p.vy = -jv * 0.85;
+        p.vx = dir * 1.2;
+        p.jumping = true;
+      } else {
+        if (p.vx || p.vy) p.anim++;
+        const py0 = p.y;
+        collideMove(p);
+        if (p.grounded) p.climbing = false;
+        else if (!trunkOverlap(p)) {
+          if (p.vy < 0 && !p.vx) { p.y = py0; } // ladder-style stop at trunk top
+          else p.climbing = false;              // stepped off sideways or below base
+        }
+        phase = 'climb';
       }
     }
+  }
+
+  if (phase === 'free') {
+    // horizontal
+    const max = inp.b ? (p.spd || TUNING.run) : TUNING.walk;
+    if (dir !== 0) {
+      p.face = dir;
+      const a = (dir * p.vx < 0) ? TUNING.skid : TUNING.acc;
+      p.vx += dir * a;
+      if (Math.abs(p.vx) > max && dir * p.vx > 0) p.vx = dir * Math.max(Math.abs(p.vx) - TUNING.dec, max);
+    } else {
+      if (p.vx > 0) p.vx = Math.max(0, p.vx - TUNING.dec);
+      else if (p.vx < 0) p.vx = Math.min(0, p.vx + TUNING.dec);
+    }
+    // jump: buffer + coyote
+    if (inp.aP && !climbJumped) p.buffer = TUNING.buffer;
+    else if (p.buffer > 0) p.buffer--;
+    if (p.grounded) p.coyote = TUNING.coyote; else if (p.coyote > 0) p.coyote--;
+    if (p.buffer > 0 && (p.grounded || p.coyote > 0)) {
+      p.vy = -jv; p.grounded = false; p.coyote = 0; p.buffer = 0; p.jumping = true;
+    }
+    // variable height: release clamp
+    if (!inp.a && p.vy < -TUNING.minJump) p.vy = -TUNING.minJump;
+    // gravity with apex hang
+    let grav = (p.vy < 0 && inp.a) ? TUNING.gravUp : TUNING.gravDown;
+    if (!p.grounded && inp.a && Math.abs(p.vy) < TUNING.apexBand) grav *= TUNING.apexMul;
+    p.vy = Math.min(p.vy + grav, TUNING.term);
+
+    // ride platform before own movement
+    if (p.onPlat) p.x += p.onPlat.dx;
+    collideMove(p);
+    if (p.grounded) p.jumping = false;
+    // catch a vine (airborne, near its end, not held by the other actor)
+    if (!p.grounded && !p.swing && p.swingT === 0 && !p.climbing) {
+      const r = lg >= 3 ? 15 : 11;
+      const pcx = p.x + 8, pcy = p.y + 9;
+      for (const v of vines) {
+        if (v.heldBy) continue;
+        const bx = v.x + Math.sin(v.th) * v.len, by = v.y + Math.cos(v.th) * v.len;
+        if (Math.abs(pcx - bx) < r && Math.abs(pcy - by) < r + 3) {
+          p.swing = v; v.heldBy = p;
+          // carry momentum into the swing
+          v.om += (p.vx * Math.cos(v.th) - p.vy * Math.sin(v.th)) / v.len;
+          v.om = Math.max(-0.085, Math.min(0.085, v.om));
+          p.vx = 0; p.vy = 0; p.jumping = false; p.buffer = 0;
+          break;
+        }
+      }
+    }
+    p.anim++;
   }
   if (p.invuln > 0) p.invuln--;
-  p.anim++;
+  return phase;
+}
+
+function updatePlayer() {
+  const p = player;
+  if (p.dead > 0) { // death hop animation
+    p.dead++; p.vy = Math.min(p.vy + TUNING.gravDown, TUNING.term); p.y += p.vy;
+    if (p.dead === 50) startFade(() => { resetLevel(true); });
+    return;
+  }
+  moveActor(p, { l: IN.l, r: IN.r, u: IN.u, d: IN.d, a: IN.a, b: IN.b, aP: aPressed, grab: true });
   checkPickups(p);
 }
 
@@ -985,7 +1009,7 @@ function hurtPlayer(fromX) {
   const p = player;
   if (p.invuln > 0 || p.dead > 0) return;
   p.climbing = false;
-  if (p.swing) { p.swing = null; p.swingT = 30; }
+  if (p.swing) { p.swing.heldBy = null; p.swing = null; p.swingT = 30; }
   p.hearts--; flashInv = 3;
   if (p.hearts <= 0) { killPlayer(false); return; }
   p.invuln = TUNING.invuln;
@@ -1015,6 +1039,9 @@ function updateEnemies() {
         p.vy = -(IN.a ? TUNING.stompHold : TUNING.stomp);
       } else hurtPlayer(b.x + 4);
     }
+    // vs racer (no stomping for her - any contact knocks her back)
+    if (racer && !racer.done && racer.x + HB.x < b.x + 8 && racer.x + HB.x + HB.w > b.x &&
+        racer.y + HB.y < b.y + 5 && racer.y + HB.y + HB.h > b.y) hurtRacer(b.x + 4);
   }
   for (const pl of plants) {
     pl.t = (pl.t + 1) % 140; // 0-79 closed, 80-139 open
@@ -1023,6 +1050,8 @@ function updateEnemies() {
       const p = player;
       if (p.dead === 0 && p.x + HB.x < pl.x + 11 && p.x + HB.x + HB.w > pl.x + 4 &&
           p.y + HB.y < pl.y + 8 && p.y + HB.y + HB.h > pl.y) hurtPlayer(pl.x + 8);
+      if (racer && !racer.done && racer.x + HB.x < pl.x + 11 && racer.x + HB.x + HB.w > pl.x + 4 &&
+          racer.y + HB.y < pl.y + 8 && racer.y + HB.y + HB.h > pl.y) hurtRacer(pl.x + 8);
     }
   }
   for (const pl of platforms) {
@@ -1032,7 +1061,7 @@ function updateEnemies() {
   }
   // free vines keep swaying and settle down
   for (const v of vines) {
-    if (player && player.swing === v) continue;
+    if (v.heldBy) continue;
     v.om += -(0.22 / v.len) * Math.sin(v.th);
     v.om += Math.sin((frame + v.x) * 0.013) * 0.00003;
     v.om *= 0.996;
@@ -1046,32 +1075,125 @@ function updateEnemies() {
     const p = player;
     if (p.dead === 0 && p.x + HB.x < wp.x + 7 && p.x + HB.x + HB.w > wp.x + 1 &&
         p.y + HB.y < wp.y + 6 && p.y + HB.y + HB.h > wp.y + 1) hurtPlayer(wp.x + 4);
+    if (racer && !racer.done && racer.x + HB.x < wp.x + 7 && racer.x + HB.x + HB.w > wp.x + 1 &&
+        racer.y + HB.y < wp.y + 6 && racer.y + HB.y + HB.h > wp.y + 1) hurtRacer(wp.x + 4);
   }
 }
 
+// The hamster's "thumbs": turns the current route node + world state into
+// virtual button presses, then moveActor applies the exact player physics.
+function racerInputs(r) {
+  const inp = { l: 0, r: 0, u: 0, d: 0, a: 0, b: 1 };
+  const route = LEVELS[curLevel].route;
+  if (r.node >= route.length) { inp.r = 1; return inp; }
+  const n = route[r.node];
+  const seek = (tx) => { if (r.x < tx - 2) inp.r = 1; else if (r.x > tx + 2) inp.l = 1; };
+  inp.grab = n.t === 'climb'; // only auto-catch trunks when she means to climb
+
+  // recovery: ended up hanging somewhere the current goal doesn't expect
+  if (r.climbing && n.t !== 'climb') { inp.d = 1; return inp; } // slide down, resume
+  if (r.swing && n.t !== 'vine') {
+    if (Math.abs(r.swing.th) < 0.35) inp.a = 1; // let go near the bottom
+    return inp;
+  }
+
+  if (n.t === 'run') {
+    seek(n.tx);
+    if (r.grounded && Math.abs(r.x - n.tx) <= 4) r.node++;
+  } else if (n.t === 'gap') {
+    inp.r = 1;
+    if (r.grounded) {
+      r.airT = 0;
+      if (r.x >= n.jx) inp.a = 1;
+      if (r.x >= n.tx) r.node++;
+    } else {
+      r.airT++;
+      if (r.airT < (n.hold || 999)) inp.a = 1;
+    }
+  } else if (n.t === 'climb') {
+    if (r.climbing) {
+      if (r.y > n.ty) inp.u = 1;
+      else inp[n.exit > 0 ? 'r' : 'l'] = 1; // step off at height
+    } else if (r.y > n.ty + 30) { // still below: approach and grab
+      seek(n.cx);
+      inp.u = 1;
+    } else { // just stepped off near the top: keep moving, land, done
+      inp[n.exit > 0 ? 'r' : 'l'] = 1;
+      if (r.grounded && r.y <= n.ty + 24) r.node++;
+    }
+  } else if (n.t === 'vine') {
+    if (n.fy && r.y > n.fy) { r.node = n.rn; return inp; } // fell: physically retry
+    if (r.swing) {
+      const v = r.swing;
+      if (v.om >= 0) inp.r = 1; else inp.l = 1; // pump with the swing
+      if (v.om > 0.044 && v.th > -0.05 && v.th < 0.4) inp.a = 1; // release at speed
+      r.caught = true;
+    } else if (!r.grounded) {
+      inp.r = 1;
+      // hold jump for the scripted arc height; after any catch, always hold
+      r.airT++;
+      if (r.caught || r.airT < n.hold) inp.a = 1;
+    } else {
+      r.airT = 0;
+      if (r.x < n.jx - 2) inp.r = 1;             // approach
+      else if (n.brake !== false && Math.abs(r.vx) > 0.4) { } // brake first (slow-arc catch)
+      else { inp.a = 1; inp.r = 1; }              // jump into the vine
+      if (r.x >= n.tx) { r.node++; r.caught = false; }
+    }
+  }
+
+  // reactive hop over enemies ahead (imperfect on purpose - she can be hit)
+  if (r.hopCd > 0) r.hopCd--;
+  if (r.hopHold > 0) { inp.a = 1; r.hopHold--; }
+  if (r.grounded && !r.climbing && !r.swing && r.hopCd === 0) {
+    const dirF = inp.r ? 1 : inp.l ? -1 : 0;
+    if (dirF) {
+      for (const b of beetles) {
+        if (!b.alive) continue;
+        const dx = (b.x + 4) - (r.x + 8);
+        if (dx * dirF > 0 && Math.abs(dx) < 22 && Math.abs(b.y - r.y) < 20) { inp.a = 1; r.hopCd = 35; r.hopHold = 8; break; }
+      }
+      for (const pl of plants) {
+        const dx = (pl.x + 8) - (r.x + 8);
+        if (dx * dirF > 0 && Math.abs(dx) < 26 && pl.t > 55 && Math.abs(pl.y - r.y) < 24) { inp.a = 1; r.hopCd = 35; r.hopHold = 16; break; }
+      }
+    }
+  }
+  // watchdog: if stuck against something, hop
+  if (Math.abs(r.x - r.lastX) < 0.3 && r.grounded) r.stuckT++; else r.stuckT = 0;
+  r.lastX = r.x;
+  if (r.stuckT > 180) { inp.a = 1; r.hopHold = 10; r.stuckT = 0; }
+  return inp;
+}
 function updateRacer() {
   if (!racer || racer.done) return;
   racer.t++;
-  if (racer.t < 30) return; // brief head start for the player
-  const path = LEVELS[curLevel].race;
-  let remaining = LEVELS[curLevel].raceSpeed;
-  while (remaining > 0 && racer.seg < path.length - 1) {
-    const a = path[racer.seg], b = path[racer.seg + 1];
-    const segLen = Math.hypot(b[0] - a[0], b[1] - a[1]) || 0.001;
-    const left = segLen - racer.d;
-    if (remaining < left) { racer.d += remaining; remaining = 0; }
-    else { remaining -= left; racer.seg++; racer.d = 0; }
+  if (racer.t < 12) return; // brief head start for the player
+  // fell in a pit: dazed respawn at her last solid footing (time penalty)
+  if (racer.y > LEVEL_H() + 24) {
+    if (racer.swing) { racer.swing.heldBy = null; racer.swing = null; }
+    racer.x = racer.safeX; racer.y = racer.safeY;
+    racer.vx = 0; racer.vy = 0; racer.climbing = false; racer.swingT = 0;
+    racer.dazed = 80;
   }
-  const a = path[racer.seg], b = path[Math.min(racer.seg + 1, path.length - 1)];
-  const segLen = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-  const t = Math.min(1, racer.d / segLen);
-  const nx = a[0] + (b[0] - a[0]) * t, ny = a[1] + (b[1] - a[1]) * t;
-  if (Math.abs(nx - racer.x) > 0.05) racer.face = nx > racer.x ? 1 : -1;
-  racer.x = nx; racer.y = ny; racer.anim++;
-  if (racer.seg >= path.length - 1) {
+  if (racer.dazed > 0) { racer.dazed--; return; }
+  const inp = racerInputs(racer);
+  inp.aP = inp.a && !racer.prevA;
+  racer.prevA = inp.a;
+  moveActor(racer, inp);
+  if (racer.grounded && frame % 5 === 0) { racer.safeX = racer.x; racer.safeY = racer.y; }
+  if (racer.x + 8 >= (LEVELS[curLevel].finishX || 1e9)) {
     racer.done = true;
     if (state === 'play') { state = 'lost'; stateT = 0; }
   }
+}
+function hurtRacer(fromX) {
+  const r = racer;
+  if (!r || r.invuln > 0 || r.done) return;
+  r.invuln = TUNING.invuln;
+  if (r.swing) { r.swing.heldBy = null; r.swing = null; r.swingT = 30; }
+  r.climbing = false;
+  r.vx = (r.x + 8 < fromX ? -1.5 : 1.5); r.vy = -2;
 }
 
 // ---------- Camera ----------
@@ -1154,7 +1276,9 @@ function drawEntities() {
   if (racer) {
     const sx = Math.round(racer.x) + ox, sy = Math.round(racer.y) + oy;
     if (sx > -16 && sx < W && sy > -16 && sy < H) {
-      drawSpr(SPR.hamster[(racer.anim >> 3) & 1], sx, sy, racer.face < 0);
+      if (!(racer.invuln > 0 && (frame & 3) < 2)) {
+        drawSpr(SPR.hamster[racer.dazed > 0 ? 0 : (racer.anim >> 3) & 1], sx, sy, racer.face < 0);
+      }
     } else { // off-screen: edge marker
       const ax = Math.max(3, Math.min(W - 11, sx + 4));
       const ay = Math.max(11, Math.min(H - 18, sy + 4));
