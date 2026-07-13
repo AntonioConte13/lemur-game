@@ -567,9 +567,13 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) IN[k] = 0; });
 
-// touch: d-pad computes direction from pointer position; buttons are simple
+// touch: d-pad computes direction from pointer position; buttons are simple.
+// Every pointer is also tracked globally: if the browser ever drops a
+// pointerup (notification swipe, edge gesture, tab switch), the ghost touch
+// would otherwise hold a direction forever - the #1 stuck-input bug.
 const dpadEl = document.getElementById('dpad');
 const dpadPtrs = new Map();
+const btnPtrs = new Map(); // pointerId -> {key, el}
 function dpadUpdate() {
   IN.l = IN.r = IN.u = IN.d = 0;
   const rc = dpadEl.getBoundingClientRect();
@@ -580,20 +584,44 @@ function dpadUpdate() {
     if (dy < -0.25) IN.u = 1; if (dy > 0.25) IN.d = 1;
   }
 }
-dpadEl.addEventListener('pointerdown', e => { dpadEl.setPointerCapture(e.pointerId);
+dpadEl.addEventListener('pointerdown', e => {
+  try { dpadEl.setPointerCapture(e.pointerId); } catch (err) {}
   dpadPtrs.set(e.pointerId, { x:e.clientX, y:e.clientY }); dpadUpdate(); e.preventDefault(); });
 dpadEl.addEventListener('pointermove', e => { if (dpadPtrs.has(e.pointerId)) {
   dpadPtrs.set(e.pointerId, { x:e.clientX, y:e.clientY }); dpadUpdate(); } });
 function dpadEnd(e) { dpadPtrs.delete(e.pointerId); dpadUpdate(); }
 dpadEl.addEventListener('pointerup', dpadEnd);
 dpadEl.addEventListener('pointercancel', dpadEnd);
+dpadEl.addEventListener('lostpointercapture', dpadEnd);
 function bindBtn(id, key) {
   const el = document.getElementById(id);
-  el.addEventListener('pointerdown', e => { IN[key] = 1; el.classList.add('pressed'); e.preventDefault(); });
-  el.addEventListener('pointerup',   e => { IN[key] = 0; el.classList.remove('pressed'); });
-  el.addEventListener('pointercancel', e => { IN[key] = 0; el.classList.remove('pressed'); });
+  el.addEventListener('pointerdown', e => {
+    btnPtrs.set(e.pointerId, { key, el });
+    IN[key] = 1; el.classList.add('pressed'); e.preventDefault();
+  });
+  const end = e => { btnPtrs.delete(e.pointerId); IN[key] = 0; el.classList.remove('pressed'); };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
 }
 bindBtn('btnA', 'a'); bindBtn('btnB', 'b'); bindBtn('btnStart', 'start');
+// global net: any pointer ending ANYWHERE releases whatever it was holding
+function releasePointer(e) {
+  if (dpadPtrs.delete(e.pointerId)) dpadUpdate();
+  const b = btnPtrs.get(e.pointerId);
+  if (b) { btnPtrs.delete(e.pointerId); IN[b.key] = 0; b.el.classList.remove('pressed'); }
+}
+addEventListener('pointerup', releasePointer, true);
+addEventListener('pointercancel', releasePointer, true);
+// focus loss / app switch: drop every input, touch and keyboard alike
+function clearAllInputs() {
+  dpadPtrs.clear(); dpadUpdate();
+  for (const b of btnPtrs.values()) b.el.classList.remove('pressed');
+  btnPtrs.clear();
+  IN.l = IN.r = IN.u = IN.d = IN.a = IN.b = IN.start = 0;
+}
+addEventListener('blur', clearAllInputs);
+addEventListener('pagehide', clearAllInputs);
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearAllInputs(); });
 // tapping the screen = START on menus only (never pauses gameplay)
 cv.addEventListener('pointerdown', e => {
   if (state !== 'play' && state !== 'pause') IN.start = 1;
