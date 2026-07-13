@@ -367,6 +367,48 @@ SPR.empy = S([
 "..333333333333..",
 "...33......33...",
 "................"]);
+SPR.badi = [S([
+"................",
+".....3222223....",
+"33...3202023..33",
+"333..3232323.333",
+".33..3222223.33.",
+"....332222233...",
+".....322223.....",
+".....322223.....",
+"......3223......",
+".......33.......",
+"......3..3......",
+"................",
+"................",
+"................",
+"................",
+"................"]), S([
+"................",
+".....3222223....",
+".....3202023....",
+"33...3232323..33",
+"333..3222223.333",
+".33.332222233.33",
+".....322223.....",
+".....322223.....",
+"......3223......",
+".......33.......",
+"......3..3......",
+"................",
+"................",
+"................",
+"................",
+"................"])];
+SPR.carrot = S([
+"....11..",
+"...11...",
+"..3333..",
+".322223.",
+".32223..",
+"..3223..",
+"..323...",
+"...3...."]);
 SPR.hamster = [S([
 "................",
 "...33..33.......",
@@ -692,6 +734,32 @@ function buildL4() { // CANOPY RUSH - rival race, 176x32 tiles
   set(gr, 168, 27, 'E');
   return gr.map(r => r.join(''));
 }
+function buildL5() { // THE GREAT TREE - ascent gauntlet + boss arena, 40x88
+  const gr = grid(40, 88);
+  rect(gr, 0, 84, 40, 4, '#');       // forest floor
+  rect(gr, 16, 80, 2, 4, '#');       // step 1
+  rect(gr, 21, 78, 2, 6, '#');       // step 2
+  rect(gr, 26, 76, 14, 2, '#');      // ledge A (run/jump screen)
+  rect(gr, 37, 62, 2, 14, 'T');      // trunk 1 (climb screen)
+  rect(gr, 24, 64, 12, 2, '#');      // ledge B
+  rect(gr, 0, 60, 11, 2, '#');       // ledge C
+  rect(gr, 14, 50, 9, 2, '#');       // catch ledge (under the arena gap)
+  rect(gr, 4, 42, 2, 18, 'T');       // trunk 2 (up into the arena)
+  // boss arena: sealed room with side trunks; floor has the entry hole
+  rect(gr, 0, 20, 40, 2, '#');       // ceiling
+  rect(gr, 0, 22, 2, 20, '#');       // west wall
+  rect(gr, 38, 22, 2, 20, '#');      // east wall
+  rect(gr, 2, 40, 2, 2, '#');        // floor west of entry hole
+  rect(gr, 7, 40, 31, 2, '#');       // main arena floor
+  rect(gr, 2, 28, 2, 12, 'T');       // west arena trunk
+  rect(gr, 36, 28, 2, 12, 'T');      // east arena trunk
+  set(gr, 3, 83, 'S');
+  set(gr, 13, 83, 'e'); set(gr, 30, 75, 'p'); set(gr, 37, 68, 'w');
+  set(gr, 37, 60, 'r'); set(gr, 14, 58, 'r'); set(gr, 38, 82, 'r');
+  set(gr, 18, 54, 'v'); set(gr, 10, 54, 'v');
+  set(gr, 10, 39, 'c');              // Brave Bison guards the arena
+  return gr.map(r => r.join(''));
+}
 const PAL_FOREST = ['#c4bda8', '#7d756a', '#49443d', '#171713'];
 // The hamster's route: not positions to glide between, but goals for a
 // scripted PLAYER. run=reach x on foot; gap=run-jump at jx; climb=grab trunk
@@ -718,22 +786,31 @@ const LEVELS = [
   { name: 'FROWNING FOREST',  build: buildL3, npc: { n: 'wizard', c: 'bison' }, pal: PAL_FOREST },
   { name: 'CANOPY RUSH',      build: buildL4, npc: {}, bias: 72, route: L4_ROUTE, finishX: 1344, racerSpd: 1.5,
     quip: ['HUSTLING HAMSTER:', 'I KEEP WINNING BECAUSE', 'I KEEP MOVING! GO!'] },
+  { name: 'THE GREAT TREE',   build: buildL5, npc: { c: 'bison' }, boss: true,
+    quip: ['BAD INTENTIONS:', 'CUTE GOT ME IN THE DOOR.', 'CHAOS TAKES IT FROM HERE!'] },
 ];
-let MAP, MAPW, MAPH = 24, markers, curLevel = 0;
-function loadLevel(i) {
-  curLevel = i;
-  const rows = LEVELS[i].build();
-  MAPW = rows[0].length; MAPH = rows.length;
+let MAP, MAPW, MAPH = 24, markers, curLevel = 0, LEVEL_ROWS = null, bossKilled = false;
+function rebuildTiles() { // re-parse tiles only (restores boss floor cuts)
   MAP = new Uint8Array(MAPW * MAPH);
-  markers = [];
   for (let r = 0; r < MAPH; r++) for (let c = 0; c < MAPW; c++) {
-    const ch = rows[r][c];
+    const ch = LEVEL_ROWS[r][c];
     if (ch === '#') MAP[r * MAPW + c] = 1;
     else if (ch === '=') MAP[r * MAPW + c] = 2;
     else if (ch === 'T') MAP[r * MAPW + c] = 3;
-    else if (ch !== '.') markers.push({ ch, c, r });
   }
+}
+function loadLevel(i) {
+  curLevel = i;
+  LEVEL_ROWS = LEVELS[i].build();
+  MAPW = LEVEL_ROWS[0].length; MAPH = LEVEL_ROWS.length;
+  markers = [];
+  for (let r = 0; r < MAPH; r++) for (let c = 0; c < MAPW; c++) {
+    const ch = LEVEL_ROWS[r][c];
+    if (ch !== '.' && ch !== '#' && ch !== '=' && ch !== 'T') markers.push({ ch, c, r });
+  }
+  rebuildTiles();
   checkpoint = null;
+  bossKilled = false;
   setPal(LEVELS[i].pal || PAL_HEX);
 }
 const LEVEL_W = () => MAPW * TS, LEVEL_H = () => MAPH * TS;
@@ -745,9 +822,13 @@ function tileAt(cx, cy) {
 
 // ---------- Entities ----------
 let player, beetles, plants, relics, npcs, platforms, peckers, vines, signs, gate, checkpoint, spawnPt, racer;
+let boss = null, carrots = [], bigRelic = null;
 loadLevel(0);
 function resetLevel(fromCheckpoint) {
   beetles = []; plants = []; relics = []; npcs = []; platforms = []; peckers = []; vines = []; signs = []; gate = null; racer = null;
+  boss = null; carrots = []; bigRelic = null;
+  rebuildTiles(); // undo any boss floor cuts
+  if (bossKilled) bigRelic = { x: 240, y: 294, t: 0 }; // boss beaten before dying: relic waits
   const nmap = LEVELS[curLevel].npc;
   const shardMarks = markers.filter(m => m.ch === 'r').sort((a, b) => a.c - b.c);
   for (const m of markers) {
@@ -1044,6 +1125,7 @@ function updateEnemies() {
         racer.y + HB.y < b.y + 5 && racer.y + HB.y + HB.h > b.y) hurtRacer(b.x + 4);
   }
   for (const pl of plants) {
+    if (pl.life && --pl.life <= 0) { pl.dead = true; continue; } // fear plants wilt
     pl.t = (pl.t + 1) % 140; // 0-79 closed, 80-139 open
     const open = pl.t >= 80;
     if (open) {
@@ -1054,6 +1136,7 @@ function updateEnemies() {
           racer.y + HB.y < pl.y + 8 && racer.y + HB.y + HB.h > pl.y) hurtRacer(pl.x + 8);
     }
   }
+  plants = plants.filter(pl => !pl.dead);
   for (const pl of platforms) {
     pl.t++;
     const nx = pl.baseX + Math.sin(pl.t * 0.025) * 22;
@@ -1196,6 +1279,172 @@ function hurtRacer(fromX) {
   r.vx = (r.x + 8 < fromX ? -1.5 : 1.5); r.vy = -2;
 }
 
+// ---------- Boss: Bad Intentions ----------
+// Every attack telegraphs first: a locked-in shake + "!" wind-up before any
+// harmful move, ground markers before carrots land, dash height locked at
+// telegraph start. Hard but fair - no hit without a visible tell.
+const ARENA = { left: 24, right: 288, hoverY: 226, dipY: 296, tauntY: 250, floorY: 320 };
+function spawnBoss() {
+  boss = { x: 152, y: ARENA.hoverY, hp: 3, phase: 1, st: 'wait', t: 0,
+    x0: 0, y0: 0, tx: 0, dashY: 0, dir: 1, flap: 0, hitT: 0 };
+  toast = 'BAD INTENTIONS!'; toastT = 100;
+}
+function bossVulnerable() {
+  return boss && (boss.st === 'swoop' || boss.st === 'taunt' || boss.st === 'tired');
+}
+function updateBoss() {
+  if (!boss) return;
+  const b = boss, p = player;
+  b.t++; b.flap++;
+  if (b.hitT > 0) b.hitT--;
+  const track = (tx, ty, sp) => {
+    b.x += Math.max(-sp, Math.min(sp, tx - b.x));
+    b.y += Math.max(-sp, Math.min(sp, ty - b.y));
+  };
+  if (b.st === 'wait') { // P1: hover high, drift over the player
+    track(Math.max(ARENA.left + 16, Math.min(ARENA.right - 32, p.x)), ARENA.hoverY, 0.8);
+    if (b.t > 80) { b.st = 'tell'; b.t = 0; b.x0 = b.x; }
+  }
+  else if (b.st === 'tell') { // P1 wind-up: shake + "!", rises slightly
+    b.x = b.x0 + (((b.t >> 1) & 1) ? 1 : -1);
+    b.y -= 0.12;
+    if (b.t > 50) {
+      b.st = 'swoop'; b.t = 0;
+      b.x0 = b.x; b.y0 = b.y;
+      b.tx = b.x < 152 ? ARENA.right - 24 : ARENA.left + 8; // cross to far side
+    }
+  }
+  else if (b.st === 'swoop') { // dips low mid-crossing; stompable throughout
+    const T = 150, k = b.t / T;
+    b.x = b.x0 + (b.tx - b.x0) * k;
+    b.y = b.y0 + (ARENA.dipY - b.y0) * Math.sin(Math.PI * k);
+    if (b.t >= T) { b.st = b.phase === 1 ? 'wait' : (b.phase === 2 ? 'rise' : 'hoverSide'); b.t = 0; }
+  }
+  else if (b.st === 'rise') { // P2: retreat to the top
+    track(152, ARENA.hoverY, 1.4);
+    if (b.t > 55) { b.st = 'windup'; b.t = 0; b.x0 = b.x; }
+  }
+  else if (b.st === 'windup') { // P2 tell: carrot held high + shake, markers appear
+    b.x = b.x0 + (((b.t >> 1) & 1) ? 1 : -1);
+    if (b.t === 1) {
+      carrots = [];
+      const spots = [p.x + 4, p.x - 36, p.x + 44];
+      for (let i = 0; i < 3; i++) {
+        const tx2 = Math.max(ARENA.left + 8, Math.min(ARENA.right - 8, spots[i]));
+        carrots.push({ tx: tx2, delay: 55 + i * 14, x: 0, y: 0, flying: false });
+      }
+    }
+    if (b.t > 55) { b.st = 'throw'; b.t = 0; }
+  }
+  else if (b.st === 'throw') { // lob the marked carrots, then drop to a trunk
+    if (b.t > 40) {
+      b.st = 'descend'; b.t = 0;
+      b.tx = p.x < 152 ? ARENA.right - 44 : ARENA.left + 28; // far trunk from player
+    }
+  }
+  else if (b.st === 'descend') {
+    track(b.tx, ARENA.tauntY, 1.5);
+    if (Math.abs(b.x - b.tx) < 2 && Math.abs(b.y - ARENA.tauntY) < 2) { b.st = 'taunt'; b.t = 0; }
+  }
+  else if (b.st === 'taunt') { // P2 opening: he gloats in stomp range of a trunk top
+    b.y = ARENA.tauntY + (((b.t >> 4) & 1) ? 1 : 0);
+    if (b.t > 130) { b.st = 'rise'; b.t = 0; }
+  }
+  else if (b.st === 'cut') { // P3 transition: floor falls away, vines drop
+    const order = [20, 19, 21, 18, 22, 17, 23];
+    if (b.t % 8 === 4 && b.t / 8 < order.length) {
+      const c = order[Math.floor(b.t / 8)];
+      MAP[40 * MAPW + c] = 0; MAP[41 * MAPW + c] = 0;
+      flashInv = 1;
+    }
+    track(152, 200, 1.2);
+    if (b.t > 64) {
+      vines.push({ x: 17 * TS + 4, y: 25 * TS + 2, len: 56, th: 0.1, om: 0 });
+      vines.push({ x: 23 * TS + 4, y: 25 * TS + 2, len: 56, th: -0.1, om: 0 });
+      b.st = 'hoverSide'; b.t = 0;
+    }
+  }
+  else if (b.st === 'hoverSide') { // P3: pick a wall, get ready
+    b.tx = p.x < 152 ? ARENA.right - 24 : ARENA.left + 8;
+    track(b.tx, 260, 1.6);
+    if (b.t > 60) {
+      b.st = 'dashTell'; b.t = 0;
+      b.dashY = Math.max(236, Math.min(298, p.y)); // height locked NOW - the tell
+      b.dir = b.x < 152 ? 1 : -1;
+      b.x0 = b.x;
+    }
+  }
+  else if (b.st === 'dashTell') { // P3 tell: rears back at your locked height, shaking
+    b.x = b.x0 - b.dir * Math.min(8, b.t / 5) + (((b.t >> 1) & 1) ? 1 : 0);
+    b.y += (b.dashY - b.y) * 0.2;
+    if (b.t > 50) { b.st = 'dash'; b.t = 0; }
+  }
+  else if (b.st === 'dash') {
+    b.x += b.dir * 2.6;
+    b.y = b.dashY;
+    if (b.x <= ARENA.left + 4 || b.x >= ARENA.right - 12) { b.st = 'tired'; b.t = 0; }
+  }
+  else if (b.st === 'tired') { // P3 opening: dizzy at the wall, sinking
+    b.y = Math.min(b.y + 0.3, 300);
+    if (b.t > 110) { b.st = 'hoverSide'; b.t = 0; }
+  }
+  else if (b.st === 'hurt') {
+    b.y -= 0.4;
+    if (b.t > 70) {
+      b.t = 0;
+      if (b.phase === 1) { b.phase = 2; b.st = 'rise'; }
+      else if (b.phase === 2) { b.phase = 3; b.st = 'cut'; }
+    }
+  }
+  else if (b.st === 'dying') {
+    b.y += 1.2; b.x += (((b.t >> 2) & 1) ? 2 : -2);
+    if (b.t > 60) {
+      boss = null; bossKilled = true;
+      bigRelic = { x: 240, y: 294, t: 0 };
+      toast = 'THE RELIC IS YOURS!'; toastT = 120;
+      return;
+    }
+  }
+
+  // ---- carrots (fall on their blinking markers, sprout fear plants) ----
+  for (const c of carrots) {
+    if (!c.flying) {
+      if (c.delay-- <= 0 && b.st !== 'hurt' && b.st !== 'dying') {
+        c.flying = true; c.x = b.x + 4; c.y = b.y + 8;
+        const T2 = 50;
+        c.vx = (c.tx - c.x) / T2;
+        c.vy = (ARENA.floorY - 16 - c.y) / T2 - 0.5 * 0.18 * T2;
+      }
+      continue;
+    }
+    c.vy += 0.18;
+    c.x += c.vx; c.y += c.vy;
+    if (p.dead === 0 && p.invuln === 0 && p.x + 3 < c.x + 7 && p.x + 13 > c.x + 1 &&
+        p.y + 2 < c.y + 8 && p.y + 16 > c.y) { hurtPlayer(c.x + 4); c.y = 999; }
+    if (c.y >= ARENA.floorY - 16) {
+      c.done = true;
+      // fear plant sprouts (its closed phase is the grace period)
+      if (c.y < 900) plants.push({ x: c.tx - 8, y: ARENA.floorY - 16, t: 0, life: 430 });
+      const fear = plants.filter(q => q.life);
+      if (fear.length > 3) plants.splice(plants.indexOf(fear[0]), 1);
+    }
+  }
+  carrots = carrots.filter(c => !c.done);
+
+  // ---- player vs boss ----
+  if (b.st === 'hurt' || b.st === 'dying' || p.dead > 0) return;
+  const bl = b.x + 3, br2 = b.x + 13, bt = b.y + 1, bb = b.y + 10;
+  if (p.x + 3 < br2 && p.x + 13 > bl && p.y + 2 < bb && p.y + 16 > bt) {
+    if (p.vy > 0.5 && p.y + 16 - p.vy <= bt + 5 && bossVulnerable() && b.hitT === 0) {
+      b.hp--; b.hitT = 30; b.t = 0;
+      p.vy = -(IN.a ? TUNING.stompHold : TUNING.stomp);
+      if (p.swing) { p.swing.heldBy = null; p.swing = null; p.swingT = 20; }
+      b.st = b.hp <= 0 ? 'dying' : 'hurt';
+      toast = b.hp > 0 ? 'GOT HIM!' : 'CHAOS CONTAINED!'; toastT = 80;
+    } else hurtPlayer(b.x + 8);
+  }
+}
+
 // ---------- Camera ----------
 let camX = 0, camY = 0, camYT = 0;
 function updateCamera() {
@@ -1294,6 +1543,39 @@ function drawEntities() {
     drawSpr(open ? SPR.plantOpen : SPR.plantClosed, pl.x + ox + jit, pl.y + oy);
   }
   for (const b of beetles) if (b.alive) drawSpr(SPR.beetle[(b.t >> 3) & 1], b.x + ox, b.y + oy, b.dir > 0);
+  // boss fight visuals
+  if (bigRelic) {
+    bigRelic.t++;
+    const rx = bigRelic.x + ox, ry = bigRelic.y + oy + (((bigRelic.t >> 5) & 1) ? 1 : 0);
+    fbRect(rx - 2, ry + 14, 20, 4, 2); fbRect(rx - 2, ry + 14, 20, 1, 3); // pedestal
+    drawSpr(SPR.relic[(frame >> 3) & 1], rx, ry - 4, false, 2);
+    if ((frame & 15) < 4) { fbRect(rx - 4, ry, 1, 1, 0); fbRect(rx + 19, ry - 6, 1, 1, 0); }
+  }
+  for (const c of carrots) {
+    // blinking landing marker: the tell for where it will strike
+    if ((frame & 7) < 4) {
+      const mx = c.tx + ox, my = ARENA.floorY - 3 + oy;
+      fbRect(mx - 3, my, 2, 2, 3); fbRect(mx + 1, my, 2, 2, 3);
+      fbRect(mx - 1, my - 2, 2, 2, 3); fbRect(mx - 1, my + 2, 2, 2, 3);
+    }
+    if (c.flying) drawSpr(SPR.carrot, c.x + ox, c.y + oy);
+  }
+  if (boss) {
+    const b = boss, bx2 = Math.round(b.x) + ox, by2 = Math.round(b.y) + oy;
+    if (!(b.hitT > 0 && (frame & 3) < 2) && !(b.st === 'hurt' && (frame & 3) < 2)) {
+      drawSpr(SPR.badi[(b.flap >> 3) & 1], bx2, by2, player.x > b.x);
+    }
+    if (b.st === 'tell' || b.st === 'windup' || b.st === 'dashTell') {
+      if ((frame & 7) < 5) drawText('!', bx2 + 7, by2 - 8, 3);
+      if (b.st === 'windup') drawSpr(SPR.carrot, bx2 + 4, by2 - 10);
+    }
+    if (b.st === 'taunt') drawText('HA!', bx2 + 3, by2 - 8, 3);
+    if (b.st === 'tired') { // dizzy stars orbiting: the opening
+      const a2 = b.t * 0.15;
+      fbRect(bx2 + 8 + Math.cos(a2) * 7, by2 - 2 + Math.sin(a2) * 3, 2, 2, 3);
+      fbRect(bx2 + 8 - Math.cos(a2) * 7, by2 - 2 - Math.sin(a2) * 3, 2, 2, 0);
+    }
+  }
   // player
   const p = player;
   if (!(p.invuln > 0 && (frame & 3) < 2)) {
@@ -1316,6 +1598,10 @@ function drawHUD() {
     fbRect(132 + i * 8, 2, 6, 5, filled ? 3 : 0);
     if (!filled) { fbRect(132 + i * 8, 2, 6, 1, 3); fbRect(132 + i * 8, 6, 6, 1, 3);
       fbRect(132 + i * 8, 2, 1, 5, 3); fbRect(137 + i * 8, 2, 1, 5, 3); }
+  }
+  if (boss) { // boss health, bottom center
+    drawText('BAD INTENTIONS', 44, 130, 3);
+    for (let i = 0; i < 3; i++) drawSpr(boss.hp > i ? SPR.heart : SPR.heartEmpty, 112 + i * 9, 129);
   }
 }
 function drawTextbox(lines) {
@@ -1452,14 +1738,42 @@ function step() {
   else if (state === 'play') {
     if (startPressed) { state = 'pause'; }
     else {
+      if (LEVELS[curLevel].boss && !boss && !bossKilled && player.y < 330 && player.x > 20) spawnBoss();
       updateEnemies();
       updateRacer();
+      updateBoss();
       updatePlayer();
+      // the claimed relic ends the quest
+      if (bigRelic && Math.abs(player.x - bigRelic.x) < 14 && Math.abs(player.y - bigRelic.y) < 16) {
+        bigRelic = null; SAVE.beat = 1; persist();
+        state = 'victory'; stateT = 0;
+      }
       updateCamera();
     }
     renderWorld();
     drawNpcQuips();
     if (toastT > 0) drawTextC(toast, 34, 3);
+  }
+  else if (state === 'victory') {
+    stateT++;
+    clearFB(0);
+    fbRect(5, 4, 150, 136, 0);
+    for (const [x, y, w2, h2] of [[5,4,150,2],[5,138,150,2],[5,4,2,136],[153,4,2,136]]) fbRect(x, y, w2, h2, 3);
+    fbRect(9, 8, 142, 128, 1); fbRect(11, 10, 138, 124, 0);
+    drawTextC('THE LEGENDARY RELIC', 18, 3);
+    drawTextC('IS YOURS!', 26, 3);
+    drawSpr(SPR.relic[(frame >> 4) & 1], 64, 38, false, 4);
+    drawSpr(SPR.lemurIdle, 24, 44, false, 2);
+    drawTextC('FEARLESS FAIRY:', 74, 2);
+    drawTextC("'THANK YOU, LEMUR. I'LL", 82, 2);
+    drawTextC("TAKE MY BROTHER HOME.'", 90, 2);
+    drawTextC('LEGENDS ARE MADE', 104, 3);
+    drawTextC('WITH EVERY BOLD LEAP', 112, 3);
+    drawTextC(totalShards() + '/15 SHARDS  LV' + legendLevel(), 122, 2);
+    if ((frame >> 5) & 1 && stateT > 120) drawTextC('PRESS START', 131, 3);
+    if (stateT > 120 && (aPressed || startPressed) && fadeDir === 0) {
+      startFade(() => { state = 'title'; });
+    }
   }
   else if (state === 'lost') {
     stateT++;
