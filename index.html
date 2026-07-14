@@ -519,6 +519,153 @@ SPR.pecker = [S([
 ".32223..",
 "..3.3..."])];
 
+// card-album portraits
+SPR.fairy = S([
+"................",
+".....3111113....",
+"33...3131313..33",
+"333..3111113.333",
+".33..3111113.33.",
+"....331111133...",
+".....311113.....",
+".....311113.....",
+"......3113......",
+".......33.......",
+"......3..3......",
+"................",
+"................",
+"................",
+"................",
+"................"]);
+SPR.goat = S([
+"................",
+"................",
+"...33......33...",
+"...311111113....",
+"...313113113....",
+"...311111113....",
+"....311113......",
+"....333333......",
+"..333333333333..",
+"..311001100113..",
+"..311001100113..",
+"..333333333333..",
+"...33......33...",
+"...33......33...",
+"................",
+"................"]);
+SPR.penguin = S([
+"................",
+"....333333......",
+"...33333333.....",
+"...33033033.....",
+"...33333333.....",
+"...33122133.....",
+"..3330000333....",
+"..3300000033....",
+"..3300000033....",
+"..3300000033....",
+"..3330000333....",
+"...33333333.....",
+"...22....22.....",
+"................",
+"................",
+"................"]);
+SPR.robot = S([
+"....1....1......",
+"....3....3......",
+"...33333333.....",
+"...31111113.....",
+"...31011013.....",
+"...31111113.....",
+"...33322333.....",
+"...33333333.....",
+"....322223......",
+"..3322222233....",
+"..3322222233....",
+"..3322222233....",
+"...33....33.....",
+"...33....33.....",
+"................",
+"................"]);
+SPR.bee = S([
+"................",
+"....33..33......",
+"...33333333.....",
+"...31311313.....",
+"...33333333.....",
+"33..33333333..33",
+"..333333333333..",
+"..311111111113..",
+"..333333333333..",
+"..311111111113..",
+"..333333333333..",
+"...3333333333...",
+".......33.......",
+"................",
+"................",
+"................"]);
+SPR.admiral = S([
+"................",
+"..33333333333...",
+"...333333333....",
+"....3333333.....",
+"...30000003.....",
+"...30300303.....",
+"...30000003.....",
+"....300003......",
+"...33333333.....",
+"..3222222223....",
+"..3220220223....",
+"..3222222223....",
+"...33....33.....",
+"...33....33.....",
+"................",
+"................"]);
+SPR.tree = S([
+"................",
+"....333333......",
+"...31111113.....",
+"..3111111113....",
+"..3111111113....",
+"...31111113.....",
+"....333333......",
+"......22........",
+"......22........",
+"......22........",
+"......22........",
+"....332233......",
+"................",
+"................",
+"................",
+"................"]);
+
+// ---------- Card album data ----------
+const CARDS = [
+  { n: 'LEGENDARY LEMUR',     r: 'LEGENDARY', s: () => SPR.lemurIdle,   q: ['LEAPING INTO LEGEND,', 'ONE BRANCH AT A TIME.'] },
+  { n: 'PATIENT PANDA',       r: 'RARE',      s: () => SPR.panda,       q: ['WAITING IS THE', 'HARDEST PART.'] },
+  { n: 'BRAVE BISON',         r: 'RARE',      s: () => SPR.bison,       q: ["WE'RE BORN TO BE BRAVE.", "DON'T LET FEAR FORGET IT."] },
+  { n: 'EMPATHY ELEPHANT',    r: 'RARE',      s: () => SPR.empy,        q: ['WHAT PEOPLE NEED MOST IS', 'SOMEONE WHO GETS THEM.'] },
+  { n: 'HUSTLING HAMSTER',    r: 'RARE',      s: () => SPR.hamster[0],  q: ['I KEEP WINNING BECAUSE', 'I KEEP MOVING!'] },
+  { n: 'WILLFUL WIZARD',      r: 'RARE',      s: () => SPR.wizard,      q: ['SIGNS CAN LIE.', 'VERIFY, THEN BELIEVE.'] },
+  { n: 'CYNICAL CAT',         r: 'EPIC',      s: () => SPR.cat,         q: ['NINE LIVES. NONE OF THEM', 'FOR PLAYING NICE.'] },
+  { n: 'BAD INTENTIONS',      r: 'EPIC',      s: () => SPR.badi[0],     q: ['CUTE GETS YOU IN THE DOOR.', 'CHAOS TAKES OVER.'] },
+  { n: 'FEARLESS FAIRY',      r: 'EPIC',      s: () => SPR.fairy,       q: ['FEAR IS JUST A DOOR.', 'WALK THROUGH IT.'] },
+  { n: 'GIFT GOAT',           r: 'RARE',      s: () => SPR.goat,        q: ['GIVING IS', 'THE REAL WINNING.'] },
+  { n: 'PERSISTENT PENGUIN',  r: 'COMMON',    s: () => SPR.penguin,     q: ['ONE MORE STEP.', 'ALWAYS ONE MORE.'] },
+  { n: 'RARE ROBOT',          r: 'EPIC',      s: () => SPR.robot,       q: ['ONE OF A KIND.', 'JUST LIKE YOU.'] },
+  { n: 'GARY BEE',            r: 'RARE',      s: () => SPR.bee,         q: ['POSITIVITY IS POLLEN.', 'SPREAD IT EVERYWHERE.'] },
+  { n: 'ARBITRAGING ADMIRAL', r: 'RARE',      s: () => SPR.admiral,     q: ['SEE VALUE WHERE', 'OTHERS SEE NOTHING.'] },
+  { n: 'RELIC SHARD',         r: 'COMMON',    s: () => SPR.relic[0],    q: ['EVERY SHARD REMEMBERS', 'A BOLD LEAP.'] },
+  { n: 'FEAR CARROT',         r: 'COMMON',    s: () => SPR.carrot,      q: ['PLANTED BY GLUTTONY.', 'HARVESTED BY CHAOS.'] },
+  { n: 'CANOPY BEETLE',       r: 'COMMON',    s: () => SPR.beetle[0],   q: ['SMALL. PERSISTENT.', 'ALWAYS UNDERFOOT.'] },
+  { n: 'WOODPECKER',          r: 'COMMON',    s: () => SPR.pecker[0],   q: ['THE TRUNK BELONGS', 'TO NOBODY.'] },
+  { n: 'SNAPPING PLANT',      r: 'COMMON',    s: () => SPR.plantOpen,   q: ['THE FOREST', 'BITES BACK.'] },
+  { n: 'THE GOAL TREE',       r: 'LEGENDARY', s: () => SPR.tree,        q: ['EVERY ENDING', 'IS A DOORWAY.'] },
+];
+// which card ids hide in each level (matched to sorted 'q' markers)
+const CARDS_BY_LEVEL = [[1, 2, 16, 9], [3, 17, 10, 11], [5, 6, 18, 8], [4, 12, 13, 19], [7, 15, 14, 0]];
+
 // ---------- Tiny 3x5 font ----------
 const FONT = {
 A:["010","101","111","101","101"],B:["110","101","110","101","110"],
@@ -564,15 +711,19 @@ function drawTextC(str, y, col, scale) { drawText(str, (W - textW(str, scale)) /
 
 // ---------- Input ----------
 const IN = { l:0, r:0, u:0, d:0, a:0, b:0, start:0 };
-const inPrev = { a:0, start:0, u:0, d:0, b:0 };
-let aPressed = false, startPressed = false, uPressed = false, dPressed = false, bPressed = false;
+const inPrev = { a:0, start:0, u:0, d:0, b:0, l:0, r:0 };
+let aPressed = false, startPressed = false, uPressed = false, dPressed = false, bPressed = false,
+    lPressed = false, rPressed = false;
 function pollEdges() {
   aPressed = IN.a && !inPrev.a;
   startPressed = IN.start && !inPrev.start;
   uPressed = IN.u && !inPrev.u;
   dPressed = IN.d && !inPrev.d;
   bPressed = IN.b && !inPrev.b;
+  lPressed = IN.l && !inPrev.l;
+  rPressed = IN.r && !inPrev.r;
   inPrev.a = IN.a; inPrev.start = IN.start; inPrev.u = IN.u; inPrev.d = IN.d; inPrev.b = IN.b;
+  inPrev.l = IN.l; inPrev.r = IN.r;
 }
 const KEYMAP = { ArrowLeft:'l', ArrowRight:'r', ArrowUp:'u', ArrowDown:'d', KeyZ:'a', KeyX:'b', Enter:'start' };
 addEventListener('keydown', e => {
@@ -652,9 +803,18 @@ cv.addEventListener('pointerup', () => { IN.start = 0; });
 // ---------- Save ----------
 const SAVE_KEY = 'legendary-lemur-save-v1';
 let SAVE;
-function defaultSave() { return { v:1, shards:[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]], unlocked:1, audio:true }; }
+function defaultSave() { return { v:1, shards:[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]], unlocked:1, audio:true,
+  diff:1, cards:Array(20).fill(0), chrome:0 }; }
 function loadSave() {
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1) return s; } catch (e) {}
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (s && s.v === 1) { // patch pre-v1.1 saves
+      if (!Array.isArray(s.cards) || s.cards.length !== 20) s.cards = Array(20).fill(0);
+      if (typeof s.diff !== 'number') s.diff = 1;
+      if (s.chrome == null) s.chrome = 0;
+      return s;
+    }
+  } catch (e) {}
   return defaultSave();
 }
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) {} }
@@ -662,6 +822,16 @@ SAVE = loadSave();
 function totalShards() { return SAVE.shards.flat().reduce((a, b) => a + b, 0); }
 function legendLevel() { return Math.floor(totalShards() / 3); }
 const UPGRADES = ['HIGHER JUMP', 'FASTER CLIMB', 'LONGER SWING', 'LEGEND DASH', 'TRUE LEGEND'];
+
+// ---------- Difficulty (card rarities) ----------
+const DIFFS = [
+  { name: 'BASE',             desc: '5 HEARTS. GENTLE FOES.',        hearts: 5, foe: 0.7,  boss: 0.85, oneLife: false },
+  { name: 'REFRACTOR',        desc: 'THE TRUE CARD.',                hearts: 3, foe: 1,    boss: 1,    oneLife: false },
+  { name: 'GOLD /10',         desc: '1 HEART. FIERCE BOSS.',         hearts: 1, foe: 1,    boss: 1.25, oneLife: false },
+  { name: 'SUPERFRACTOR 1/1', desc: 'ONE LIFE. ONE RUN. FOREVER.',   hearts: 1, foe: 1,    boss: 1.25, oneLife: true },
+];
+function DIFF() { return DIFFS[SAVE.diff] || DIFFS[1]; }
+function chromeOn() { return !!(SAVE.beat && SAVE.chrome); }
 
 // ---------- Audio: GB-style chip driver (2 pulse + wave-ish bass + LFSR noise) ----------
 const AUD = { ctx: null, on: SAVE.audio !== false, master: null, waves: {}, noiseBuf: null,
@@ -834,6 +1004,7 @@ function sfx(kind) {
   else if (kind === 'bosshit') { chipNoise(t, 0.2, 0.4, 0.4); chipNote('d50', 40, t, 0.18, 0.2, -8); }
   else if (kind === 'boom') chipNoise(t, 0.3, 0.45, 0.3);
   else if (kind === 'tick') chipNote('d12', 90, t, 0.03, 0.08);
+  else if (kind === 'card') { chipNote('d50', 76, t, 0.08, 0.15); chipNote('d25', 83, t + 0.08, 0.1, 0.15); chipNote('d12', 88, t + 0.16, 0.14, 0.14); }
 }
 const muteEl = document.getElementById('btnMute');
 function setMute(on) {
@@ -857,18 +1028,19 @@ function pad(s, w) { return (s + '.'.repeat(w)).slice(0, w); }
 function chunk(w, rows) { const out = []; for (let r = 0; r < 24; r++) out.push(pad(rows[r] || '', w)); return out; }
 function g(w) { return '#'.repeat(w); }
 const L1_CHUNKS = [
-  chunk(20, { 19:'...S', 20:g(20), 21:g(20), 22:g(20), 23:g(20) }),
+  chunk(20, { 19:'.q.S', 20:g(20), 21:g(20), 22:g(20), 23:g(20) }),
   chunk(24, { 18:'...##', 19:'...##',
     20:'##########....####....##', 21:'##########....####....##',
-    22:'##########....####....##', 23:'##################....##' }),
+    22:'##########.q..####....##', 23:'##################....##' }),
   chunk(20, { 19:'..........e', 20:g(20), 21:g(20), 22:g(20), 23:g(20) }),
   chunk(22, { 19:'......p.......p', 20:g(22), 21:g(22), 22:g(22), 23:g(22) }),
   chunk(32, { 3:'.'.repeat(25)+'r', 4:'.'.repeat(24)+'===', 8:'.'.repeat(21)+'===',
+    11:'.'.repeat(25)+'q',
     12:'.'.repeat(24)+'===', 16:'.'.repeat(20)+'===', 17:'.'.repeat(10)+'m', 19:'......n',
     20:'#########......#################', 21:'#########......#################',
     22:'#########......#################', 23:'#########......#################' }),
   chunk(12, { 19:'.....c', 20:g(12), 21:g(12), 22:g(12), 23:g(12) }),
-  chunk(40, { 16:'.'.repeat(15)+'==', 17:'........p', 18:'......######',
+  chunk(40, { 16:'..........q....==', 17:'........p', 18:'......######',
     19:'......######..........e...........p',
     20:'##############....########.....#########',
     21:'##############....########.....#########',
@@ -908,13 +1080,14 @@ function buildL2() { // THE GREAT TRUNKS - vertical climb, 40x72 tiles
   set(gr, 22, 50, 'w'); set(gr, 28, 36, 'w'); set(gr, 36, 20, 'w');
   set(gr, 13, 45, 'n'); set(gr, 26, 45, 'c'); set(gr, 30, 67, 'e');
   set(gr, 24, 13, 'E');
+  set(gr, 38, 66, 'q'); set(gr, 23, 42, 'q'); set(gr, 33, 12, 'q'); set(gr, 38, 29, 'q');
   return gr.map(r => r.join(''));
 }
 function buildL3() { // FROWNING FOREST - vine swinging, 220x24 tiles
   const CH = [
     chunk(20, { 19: '...S......n', 20: g(20), 21: g(20), 22: g(20), 23: g(20) }),
     // vine teaching: first over ground, second over a pit
-    chunk(26, { 8: '........v........v',
+    chunk(26, { 8: '........v........v', 10: '...............q',
       20: '##############........####', 21: '##############........####',
       22: '##############........####', 23: '##############........####' }),
     // pits with vines, then a two-vine hop
@@ -926,7 +1099,7 @@ function buildL3() { // FROWNING FOREST - vine swinging, 220x24 tiles
       15: '........#######################',
       16: '........#######################',
       17: '......##', 18: '......##',
-      19: '...s........p.......p',
+      19: '...s........p.......p...q',
       20: '##########################..############',
       21: '##########################..############',
       22: '##########################..############',
@@ -934,14 +1107,14 @@ function buildL3() { // FROWNING FOREST - vine swinging, 220x24 tiles
     chunk(12, { 19: '.....c', 20: g(12), 21: g(12), 22: g(12), 23: g(12) }),
     // the long swing: five-vine chain over one pit, low shard mid-chain
     chunk(44, { 6: '........v......v......v......v......v',
-      14: '.........................r',
+      14: '.........................r', 16: '.'.repeat(32)+'q',
       20: '####....................................####',
       21: '####....................................####',
       22: '####....................................####',
       23: '####....................................####' }),
     // breather + climb-tower shard
     chunk(24, { 6: '....v', 7: '.................r', 8: '................===',
-      12: '............===', 16: '........##', 17: '........##',
+      12: '....q.......===', 16: '........##', 17: '........##',
       18: '........##', 19: '........##',
       20: g(24), 21: g(24), 22: g(24), 23: g(24) }),
     chunk(18, { 19: '........E', 20: g(18), 21: g(18), 22: g(18), 23: g(18) }),
@@ -969,6 +1142,7 @@ function buildL4() { // CANOPY RUSH - rival race, 176x32 tiles
   set(gr, 136, 10, 'v');
   set(gr, 48, 8, 'r'); set(gr, 92, 23, 'r'); set(gr, 150, 16, 'r');
   set(gr, 168, 27, 'E');
+  set(gr, 10, 25, 'q'); set(gr, 60, 9, 'q'); set(gr, 85, 20, 'q'); set(gr, 128, 15, 'q');
   return gr.map(r => r.join(''));
 }
 function buildL5() { // THE GREAT TREE - ascent gauntlet + boss arena, 40x88
@@ -995,10 +1169,20 @@ function buildL5() { // THE GREAT TREE - ascent gauntlet + boss arena, 40x88
   set(gr, 37, 60, 'r'); set(gr, 14, 58, 'r'); set(gr, 38, 82, 'r');
   set(gr, 18, 54, 'v'); set(gr, 10, 54, 'v');
   set(gr, 10, 39, 'c');              // Brave Bison guards the arena
+  set(gr, 2, 82, 'q'); set(gr, 30, 73, 'q'); set(gr, 16, 48, 'q'); set(gr, 36, 26, 'q');
   return gr.map(r => r.join(''));
 }
 const PAL_FOREST = ['#c4bda8', '#7d756a', '#49443d', '#171713'];
 const PAL_GOLD = ['#eee4b4', '#cdb45e', '#8a7330', '#312608']; // TRUE LEGEND shimmer
+// CHROME MODE: full-color per-level palettes (Link's Awakening DX style)
+const PAL_CHROME = [
+  ['#c9f0ff', '#6cc24e', '#2c7a44', '#123120'], // jungle
+  ['#f6e3b0', '#cf9840', '#7a5222', '#241505'], // trunks
+  ['#ddcdf2', '#9678c8', '#4b3878', '#160e28'], // forest
+  ['#ffe3ae', '#f79f3f', '#bf4b26', '#33130b'], // race
+  ['#ffd9ce', '#e87656', '#8c2f2f', '#2a0d0d'], // great tree
+];
+const PAL_CHROME_TITLE = ['#d9f6ff', '#69c9de', '#2f6fa8', '#0f2038'];
 // The hamster's route: not positions to glide between, but goals for a
 // scripted PLAYER. run=reach x on foot; gap=run-jump at jx; climb=grab trunk
 // at cx, ascend to y<=ty, step off toward exit; vine=jump at jx, swing and
@@ -1049,7 +1233,7 @@ function loadLevel(i) {
   rebuildTiles();
   checkpoint = null;
   bossKilled = false;
-  setPal(LEVELS[i].pal || PAL_HEX);
+  setPal(chromeOn() ? PAL_CHROME[i] : (LEVELS[i].pal || PAL_HEX));
 }
 const LEVEL_W = () => MAPW * TS, LEVEL_H = () => MAPH * TS;
 function tileAt(cx, cy) {
@@ -1060,11 +1244,11 @@ function tileAt(cx, cy) {
 
 // ---------- Entities ----------
 let player, beetles, plants, relics, npcs, platforms, peckers, vines, signs, gate, checkpoint, spawnPt, racer;
-let boss = null, carrots = [], bigRelic = null;
+let boss = null, carrots = [], bigRelic = null, cardPks = [];
 loadLevel(0);
 function resetLevel(fromCheckpoint) {
   beetles = []; plants = []; relics = []; npcs = []; platforms = []; peckers = []; vines = []; signs = []; gate = null; racer = null;
-  boss = null; carrots = []; bigRelic = null;
+  boss = null; carrots = []; bigRelic = null; cardPks = [];
   rebuildTiles(); // undo any boss floor cuts
   if (bossKilled) bigRelic = { x: 240, y: 294, t: 0 }; // boss beaten before dying: relic waits
   const nmap = LEVELS[curLevel].npc;
@@ -1098,10 +1282,15 @@ function resetLevel(fromCheckpoint) {
     }
   }
   shardMarks.forEach((m, i) => relics.push({ x: m.c * TS, y: m.r * TS + 1, id: i, taken: !!SAVE.shards[curLevel][i] }));
+  const cardMarks = markers.filter(m => m.ch === 'q').sort((a, b) => a.c - b.c);
+  cardMarks.forEach((m, i) => {
+    const id = (CARDS_BY_LEVEL[curLevel] || [])[i];
+    if (id != null) cardPks.push({ x: m.c * TS - 1, y: m.r * TS, id, taken: !!SAVE.cards[id] });
+  });
   const sp = (fromCheckpoint && checkpoint) ? checkpoint : spawnPt;
   player = {
     x: sp.x, y: sp.y, vx: 0, vy: 0, face: 1, grounded: false, climbing: false,
-    coyote: 0, buffer: 0, jumping: false, anim: 0, hearts: 3, invuln: 0,
+    coyote: 0, buffer: 0, jumping: false, anim: 0, hearts: DIFF().hearts, invuln: 0,
     dead: 0, onPlat: null, swing: null, swingT: 0, isPlayer: true,
   };
   camX = Math.max(0, Math.min(player.x - 60, LEVEL_W() - W));
@@ -1186,6 +1375,15 @@ function checkPickups(p) {
       const tot = totalShards();
       if (tot % 3 === 0) { state = 'levelup'; stateT = 0; playJingle(J_LEVELUP, 0.09); }
       else { toast = 'RELIC SHARD ' + tot + '/15'; toastT = 90; sfx('shard'); }
+    }
+  }
+  // hidden cards
+  for (const cp of cardPks) {
+    if (cp.taken) continue;
+    if (p.x + HB.x < cp.x + 10 && p.x + HB.x + HB.w > cp.x && p.y + HB.y < cp.y + 12 && p.y + HB.y + HB.h > cp.y) {
+      cp.taken = true; SAVE.cards[cp.id] = 1; persist();
+      toast = 'CARD: ' + CARDS[cp.id].n; toastT = 110;
+      sfx('card');
     }
   }
   // checkpoint (bison)
@@ -1327,7 +1525,10 @@ function updatePlayer() {
   const p = player;
   if (p.dead > 0) { // death hop animation
     p.dead++; p.vy = Math.min(p.vy + TUNING.gravDown, TUNING.term); p.y += p.vy;
-    if (p.dead === 50) startFade(() => { resetLevel(true); });
+    if (p.dead === 50) {
+      if (DIFF().oneLife) startFade(() => { state = 'gameover'; stateT = 0; });
+      else startFade(() => { resetLevel(true); });
+    }
     return;
   }
   moveActor(p, { l: IN.l, r: IN.r, u: IN.u, d: IN.d, a: IN.a, b: IN.b, aP: aPressed, bP: bPressed, grab: true });
@@ -1355,10 +1556,11 @@ function killPlayer(pit) {
 
 function updateEnemies() {
   const camL = camX - 24, camR = camX + W + 24;
+  const foe = DIFF().foe;
   for (const b of beetles) {
     if (!b.alive || b.x < camL || b.x > camR) continue;
     b.t++;
-    b.x += b.dir * 0.4;
+    b.x += b.dir * 0.4 * foe;
     const footC = Math.floor((b.x + (b.dir > 0 ? 7 : 0)) / TS);
     const rowB = Math.floor((b.y + 6) / TS);
     if (tileAt(footC, rowB) !== 1 || tileAt(footC, rowB - 1) === 1) { b.dir *= -1; b.x += b.dir * 0.8; }
@@ -1378,7 +1580,7 @@ function updateEnemies() {
   }
   for (const pl of plants) {
     if (pl.life && --pl.life <= 0) { pl.dead = true; continue; } // fear plants wilt
-    pl.t = (pl.t + 1) % 140; // 0-79 closed, 80-139 open
+    pl.t = (pl.t + foe) % 140; // 0-79 closed, 80-139 open (slower cycle on BASE)
     const open = pl.t >= 80;
     if (open) {
       const p = player;
@@ -1404,7 +1606,7 @@ function updateEnemies() {
   }
   for (const wp of peckers) {
     wp.t++;
-    wp.y += wp.dir * 0.5;
+    wp.y += wp.dir * 0.5 * foe;
     if (wp.y <= wp.minY) { wp.y = wp.minY; wp.dir = 1; }
     if (wp.y >= wp.maxY) { wp.y = wp.maxY; wp.dir = -1; }
     const p = player;
@@ -1547,6 +1749,7 @@ function bossVulnerable() {
 function updateBoss() {
   if (!boss) return;
   const b = boss, p = player;
+  const bm = DIFF().boss; // GOLD+: attacks faster, openings shorter (tells unchanged)
   b.t++; b.flap++;
   if (b.hitT > 0) b.hitT--;
   const track = (tx, ty, sp) => {
@@ -1554,8 +1757,8 @@ function updateBoss() {
     b.y += Math.max(-sp, Math.min(sp, ty - b.y));
   };
   if (b.st === 'wait') { // P1: hover high, drift over the player
-    track(Math.max(ARENA.left + 16, Math.min(ARENA.right - 32, p.x)), ARENA.hoverY, 0.8);
-    if (b.t > 80) { b.st = 'tell'; b.t = 0; b.x0 = b.x; }
+    track(Math.max(ARENA.left + 16, Math.min(ARENA.right - 32, p.x)), ARENA.hoverY, 0.8 * bm);
+    if (b.t > 80 / bm) { b.st = 'tell'; b.t = 0; b.x0 = b.x; }
   }
   else if (b.st === 'tell') { // P1 wind-up: shake + "!", rises slightly
     b.x = b.x0 + (((b.t >> 1) & 1) ? 1 : -1);
@@ -1567,7 +1770,7 @@ function updateBoss() {
     }
   }
   else if (b.st === 'swoop') { // dips low mid-crossing; stompable throughout
-    const T = 150, k = b.t / T;
+    const T = Math.round(150 / bm), k = b.t / T;
     b.x = b.x0 + (b.tx - b.x0) * k;
     b.y = b.y0 + (ARENA.dipY - b.y0) * Math.sin(Math.PI * k);
     if (b.t >= T) { b.st = b.phase === 1 ? 'wait' : (b.phase === 2 ? 'rise' : 'hoverSide'); b.t = 0; }
@@ -1600,7 +1803,7 @@ function updateBoss() {
   }
   else if (b.st === 'taunt') { // P2 opening: he gloats in stomp range of a trunk top
     b.y = ARENA.tauntY + (((b.t >> 4) & 1) ? 1 : 0);
-    if (b.t > 130) { b.st = 'rise'; b.t = 0; }
+    if (b.t > 130 / bm) { b.st = 'rise'; b.t = 0; }
   }
   else if (b.st === 'cut') { // P3 transition: floor falls away, vines drop
     const order = [20, 19, 21, 18, 22, 17, 23];
@@ -1632,13 +1835,13 @@ function updateBoss() {
     if (b.t > 50) { b.st = 'dash'; b.t = 0; }
   }
   else if (b.st === 'dash') {
-    b.x += b.dir * 2.6;
+    b.x += b.dir * 2.6 * bm;
     b.y = b.dashY;
     if (b.x <= ARENA.left + 4 || b.x >= ARENA.right - 12) { b.st = 'tired'; b.t = 0; }
   }
   else if (b.st === 'tired') { // P3 opening: dizzy at the wall, sinking
     b.y = Math.min(b.y + 0.3, 300);
-    if (b.t > 110) { b.st = 'hoverSide'; b.t = 0; }
+    if (b.t > 110 / bm) { b.st = 'hoverSide'; b.t = 0; }
   }
   else if (b.st === 'hurt') {
     b.y -= 0.4;
@@ -1773,6 +1976,13 @@ function drawEntities() {
   for (const v of vines) drawVine(v, ox, oy);
   for (const pl of platforms) drawSpr(SPR.mplat, pl.x + ox, pl.y + oy);
   for (const rl of relics) if (!rl.taken) drawSpr(SPR.relic[(frame >> 4) & 1], rl.x + ox, rl.y + oy);
+  for (const cp of cardPks) if (!cp.taken) {
+    const cx2 = cp.x + ox, cy2 = cp.y + oy + (((frame >> 5) & 1) ? 1 : 0);
+    fbRect(cx2, cy2, 10, 12, 0);
+    fbRect(cx2, cy2, 10, 1, 3); fbRect(cx2, cy2 + 11, 10, 1, 3);
+    fbRect(cx2, cy2, 1, 12, 3); fbRect(cx2 + 9, cy2, 1, 12, 3);
+    drawText('?', cx2 + 3, cy2 + 3, 3);
+  }
   const NSPR = { bison: SPR.bison, panda: SPR.panda, empy: SPR.empy, wizard: SPR.wizard, cat: SPR.cat };
   for (const n of npcs) drawSpr(NSPR[n.kind], n.x + ox, n.y + oy, n.kind !== 'bison');
   for (const wp of peckers) drawSpr(SPR.pecker[(wp.t >> 4) & 1], wp.x + ox, wp.y + oy, wp.t % 128 > 64);
@@ -1842,7 +2052,8 @@ function drawEntities() {
   }
 }
 function drawHUD() {
-  for (let i = 0; i < 3; i++) drawSpr(player.hearts > i ? SPR.heart : SPR.heartEmpty, 3 + i * 9, 2);
+  const maxH = DIFF().hearts;
+  for (let i = 0; i < maxH; i++) drawSpr(player.hearts > i ? SPR.heart : SPR.heartEmpty, 3 + i * (maxH > 3 ? 8 : 9), 2);
   const tot = totalShards();
   drawSpr(SPR.relic[0], 62, 1);
   drawText(tot + '/15', 71, 2, 3);
@@ -1927,7 +2138,70 @@ function drawTitle() {
 }
 
 // ---------- Game states & loop ----------
-let state = 'title', stateT = 0, frame = 0, selIdx = 0;
+let state = 'title', stateT = 0, frame = 0, selIdx = 0, menuIdx = 0, albIdx = 0;
+function menuRows() {
+  const rows = ['PLAY', 'DIFFICULTY', 'CARD ALBUM'];
+  if (SAVE.beat) rows.push('CHROME MODE');
+  return rows;
+}
+function drawMenu() {
+  clearFB(0);
+  fbRect(8, 6, 144, 132, 0);
+  fbRect(8, 6, 144, 2, 3); fbRect(8, 136, 144, 2, 3); fbRect(8, 6, 2, 132, 3); fbRect(150, 6, 2, 132, 3);
+  drawTextC('LEGENDARY LEMUR', 14, 3);
+  fbRect(24, 22, 112, 1, 2);
+  const rows = menuRows();
+  for (let i = 0; i < rows.length; i++) {
+    const y = 34 + i * 20;
+    drawText(rows[i], 30, y, 3);
+    if (i === 1) drawText(DIFF().name, 30, y + 8, 2);
+    if (i === 2) drawText(SAVE.cards.reduce((a, b) => a + b, 0) + '/20 COLLECTED', 30, y + 8, 2);
+    if (i === 3) drawText(SAVE.chrome ? 'ON - FULL COLOR' : 'OFF - CLASSIC', 30, y + 8, 2);
+    if (i === menuIdx) drawText('>', 21, y, 3);
+  }
+  if (menuIdx === 1) drawTextC(DIFF().desc, 118, 2);
+  else drawTextC('Z SELECT - X BACK', 118, 2);
+  if ((frame >> 5) & 1) drawTextC('PRESS START', 128, 3);
+}
+function drawAlbum() {
+  clearFB(0);
+  drawTextC('CARD ALBUM  ' + SAVE.cards.reduce((a, b) => a + b, 0) + '/20', 6, 3);
+  fbRect(10, 14, 140, 1, 2);
+  for (let i = 0; i < 20; i++) {
+    const col = i % 5, row = Math.floor(i / 5);
+    const x = 12 + col * 28, y = 18 + row * 26;
+    fbRect(x, y, 24, 22, 0);
+    fbRect(x, y, 24, 1, 3); fbRect(x, y + 21, 24, 1, 3); fbRect(x, y, 1, 22, 3); fbRect(x + 23, y, 1, 22, 3);
+    if (SAVE.cards[i]) drawSpr(CARDS[i].s(), x + 4, y + 3);
+    else drawText('?', x + 10, y + 8, 1);
+    if (i === albIdx) { // cursor
+      fbRect(x - 1, y - 1, 26, 1, 2); fbRect(x - 1, y + 22, 26, 1, 2);
+      fbRect(x - 1, y - 1, 1, 24, 2); fbRect(x + 24, y - 1, 1, 24, 2);
+    }
+  }
+  const sel = CARDS[albIdx];
+  drawTextC(SAVE.cards[albIdx] ? sel.n : '- NOT FOUND YET -', 124, 3);
+  drawTextC(SAVE.cards[albIdx] ? 'Z VIEW - X BACK' : 'X BACK', 133, 2);
+}
+function drawCardDetail() {
+  clearFB(0);
+  const c = CARDS[albIdx];
+  fbRect(20, 8, 120, 128, 0);
+  for (const [x, y, w2, h2] of [[20,8,120,2],[20,134,120,2],[20,8,2,128],[138,8,2,128]]) fbRect(x, y, w2, h2, 3);
+  fbRect(24, 12, 112, 120, 1); fbRect(26, 14, 108, 116, 0);
+  drawTextC('VEEFRIENDS', 19, 2);
+  drawTextC(c.n, 28, 3);
+  drawSpr(c.s(), 56, 44, false, 3);
+  drawText('GO-' + (albIdx + 1), 28, 96, 2);
+  drawText(c.r, 138 - textW(c.r) - 8, 96, 2);
+  c.q.forEach((ln, i) => drawTextC(ln, 106 + i * 8, 3));
+  // shimmer
+  const t = (frame * 2) % 280;
+  for (let y = 8; y < 136; y++) for (let x = 20; x < 140; x++) {
+    const d = x + y - t + 30;
+    if (d > 0 && d < 10) { const i = y * W + x; if (FB[i] > 0) FB[i]--; }
+  }
+}
 function drawSelect() {
   clearFB(0);
   fbRect(8, 6, 144, 132, 0);
@@ -1967,11 +2241,55 @@ function step() {
   if (toastT > 0) toastT--;
 
   if (state === 'title') {
-    setPal(SAVE.trueLegend ? PAL_GOLD : PAL_HEX);
+    setPal(chromeOn() ? PAL_CHROME_TITLE : (SAVE.trueLegend ? PAL_GOLD : PAL_HEX));
     if (AUD.current !== 'title') playSong('title');
     drawTitle();
     if ((startPressed || aPressed) && fadeDir === 0) {
-      startFade(() => { state = 'select'; selIdx = Math.min(SAVE.unlocked, LEVELS.length) - 1; });
+      startFade(() => { state = 'menu'; menuIdx = 0; });
+    }
+  }
+  else if (state === 'menu') {
+    if (AUD.current !== 'title') playSong('title');
+    drawMenu();
+    const rows = menuRows();
+    if (uPressed) menuIdx = (menuIdx + rows.length - 1) % rows.length;
+    if (dPressed) menuIdx = (menuIdx + 1) % rows.length;
+    if (bPressed && fadeDir === 0) startFade(() => { state = 'title'; });
+    else if ((startPressed || aPressed) && fadeDir === 0) {
+      if (menuIdx === 0) {
+        if (DIFF().oneLife) startFade(() => { loadLevel(0); resetLevel(false); state = 'intro'; stateT = 0; });
+        else startFade(() => { state = 'select'; selIdx = Math.min(SAVE.unlocked, LEVELS.length) - 1; });
+      }
+      else if (menuIdx === 1) { SAVE.diff = (SAVE.diff + 1) % DIFFS.length; persist(); sfx('tick'); }
+      else if (menuIdx === 2) { state = 'album'; albIdx = 0; }
+      else if (menuIdx === 3) { SAVE.chrome = SAVE.chrome ? 0 : 1; persist(); sfx('tick'); }
+    }
+  }
+  else if (state === 'album') {
+    setPal(chromeOn() ? PAL_CHROME_TITLE : (SAVE.trueLegend ? PAL_GOLD : PAL_HEX));
+    drawAlbum();
+    if (uPressed) albIdx = (albIdx + 15) % 20;
+    if (dPressed) albIdx = (albIdx + 5) % 20;
+    if (lPressed) albIdx = (albIdx + 19) % 20;
+    if (rPressed) albIdx = (albIdx + 1) % 20;
+    if (aPressed && SAVE.cards[albIdx]) { state = 'card'; sfx('tick'); }
+    else if (bPressed || startPressed) state = 'menu';
+  }
+  else if (state === 'card') {
+    drawCardDetail();
+    if (aPressed || bPressed || startPressed) state = 'album';
+  }
+  else if (state === 'gameover') {
+    stateT++;
+    clearFB(0);
+    fbRect(12, 44, 136, 52, 0);
+    fbRect(12, 44, 136, 2, 3); fbRect(12, 94, 136, 2, 3); fbRect(12, 44, 2, 52, 3); fbRect(146, 44, 2, 52, 3);
+    drawTextC('GAME OVER', 52, 3, 2);
+    drawTextC('THE 1/1 RUN ENDS HERE.', 68, 2);
+    drawTextC('LEGENDS TRY AGAIN.', 76, 2);
+    if ((frame >> 5) & 1 && stateT > 60) drawTextC('PRESS START', 86, 3);
+    if (stateT > 60 && (aPressed || startPressed) && fadeDir === 0) {
+      startFade(() => { state = 'title'; });
     }
   }
   else if (state === 'select') {
@@ -1980,7 +2298,8 @@ function step() {
     const avail = Math.min(SAVE.unlocked, LEVELS.length);
     if (uPressed) selIdx = (selIdx + avail - 1) % avail;
     if (dPressed) selIdx = (selIdx + 1) % avail;
-    if ((startPressed || aPressed) && fadeDir === 0) {
+    if (bPressed && fadeDir === 0) startFade(() => { state = 'menu'; });
+    else if ((startPressed || aPressed) && fadeDir === 0) {
       startFade(() => { loadLevel(selIdx); resetLevel(false); state = 'intro'; stateT = 0; });
     }
   }

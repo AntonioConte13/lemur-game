@@ -57,6 +57,7 @@ run(2, { start: 1 });
 run(1, {});
 run(40, {}); // fade through
 console.log('after start: state =', G.state);
+run(2, { start: 1 }); run(1, {}); run(40, {}); // menu: PLAY -> level select
 run(2, { start: 1 }); run(1, {}); run(40, {}); // level select -> L1
 run(120, {}); // intro banner elapses
 console.log('after intro: state =', G.state, 'player at', G.player.x.toFixed(1), G.player.y.toFixed(1));
@@ -101,6 +102,7 @@ console.log(errs.length === 0 ? 'NO SPRITE ERRORS' : 'SPRITE ERRORS: ' + errs.le
 // 5. relic pickup + level-up flow
 localStorage._d = {};
 G.state = 'title';
+run(2, { start: 1 }); run(1, {}); run(40, {});
 run(2, { start: 1 }); run(1, {}); run(40, {});
 run(2, { start: 1 }); run(1, {}); run(40, {}); run(120, {});
 // teleport to the three shard spots and grab each

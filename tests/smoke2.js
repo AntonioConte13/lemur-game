@@ -28,6 +28,8 @@ console.log('loaded, sprite errors:', errs.length);
 run(2,{start:1}); run(1,{}); run(40,{});
 console.log('after title start:', G.state);
 run(2,{start:1}); run(1,{}); run(40,{});
+console.log('after menu PLAY:', G.state);
+run(2,{start:1}); run(1,{}); run(40,{});
 console.log('after select start:', G.state, '| level:', G.curLevel);
 run(120,{});
 console.log('after intro:', G.state);

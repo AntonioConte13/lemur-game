@@ -48,8 +48,8 @@ Each milestone is tagged when its checkpoint passes:
 
 | Tag | Milestone |
 |---|---|
-| `v1.0` | Final base game: 5 levels, boss, audio, PWA (this file's version) |
-| `v1.1` | Card Collector update (planned) |
+| `v1.0` | Final base game: 5 levels, boss, audio, PWA |
+| `v1.1` | Card Collector: rarity difficulties, 20-card hidden album, Chrome Mode |
 | `v1.2` | Level Depth update (planned) |
 | `v1.3` | Trait Worlds update (planned) |
 | `v1.4` | Racer update (planned) |
